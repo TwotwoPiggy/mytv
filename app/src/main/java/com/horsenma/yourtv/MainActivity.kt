@@ -862,7 +862,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        playerFragment.updatePlayer()
+        playerFragment.recreatePlayer()
     }
 
     fun settingActive() {
@@ -1389,14 +1389,12 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        if (playerFragment.isAdded && playerFragment.player != null && powerManager.isInteractive) {
+        if (playerFragment.isAdded && playerFragment.isPlayerActive() && powerManager.isInteractive) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode) {
                 Log.d(TAG, "In Picture-in-Picture mode, skipping player release and process termination")
                 return
             }
-            playerFragment.player?.stop()
-            playerFragment.player?.release()
-            playerFragment.player = null
+            playerFragment.releasePlayer()
             android.os.Process.killProcess(android.os.Process.myPid())
         }
     }
@@ -1427,10 +1425,8 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.Main) {
             try {
-                if (playerFragment.isAdded && playerFragment.player != null) {
-                    playerFragment.player?.stop()
-                    playerFragment.player?.release()
-                    playerFragment.player = null
+                if (playerFragment.isAdded && playerFragment.isPlayerActive()) {
+                    playerFragment.releasePlayer()
                     Log.d(TAG, "PlayerFragment resources released")
                 }
                 ViewModelUtils.cancelViewModelJobs(viewModel)
