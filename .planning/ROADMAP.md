@@ -13,8 +13,11 @@
 - `LIMITS-02`
 - `PERF-02`
 
+**Plans:** 2 plans
+
 Plans:
-- [ ] TBD (run /gsd-plan-phase 1 to break down)
+- [ ] 01-01-PLAN.md — Verification removal & boot-to-play (LIMITS-01, LIMITS-02)
+- [ ] 01-02-PLAN.md — ExoPlayer engine extraction & callback interface (PERF-02)
 
 ---
 
