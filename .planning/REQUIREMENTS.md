@@ -31,7 +31,15 @@
 
 ## Traceability
 
-<!-- Filled during roadmap creation -->
+- **LIMITS-01**: Mapped to Phase 1 (Bypass activation checks)
+- **LIMITS-02**: Mapped to Phase 1 (Strip backend queries)
+- **UI-01**: Mapped to Phase 2 (Gradients & Glassmorphism design)
+- **UI-02**: Mapped to Phase 2 (Transition animations & status feedbacks)
+- **REMOTE-01**: Mapped to Phase 2 (Remote controller key debounce)
+- **REMOTE-02**: Mapped to Phase 2 (Adapt for screen sizes & layout align)
+- **PERF-01**: Mapped to Phase 2 (MainActivity KeyEvents decoupling)
+- **PERF-02**: Mapped to Phase 1 (PlayerFragment split & rewrite)
+- **PERF-03**: Mapped to Phase 2 (Streaming XMLTV EPG parser rewrite)
 
 ---
-*Last updated: 2026-06-20*
+*Last updated: 2026-06-20 after roadmap creation*
