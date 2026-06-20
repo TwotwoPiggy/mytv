@@ -16,16 +16,16 @@
 - `LIMITS-02`
 - `PERF-02`
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Verification removal & boot-to-play (LIMITS-01, LIMITS-02)
+- [x] 01-01-PLAN.md — Verification removal & boot-to-play (LIMITS-01, LIMITS-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — ExoPlayer engine extraction & callback interface (PERF-02)
+- [x] 01-02-PLAN.md — ExoPlayer engine extraction & callback interface (PERF-02)
 
 ---
 
