@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.provider.Settings
 import android.util.Log
-import com.google.common.reflect.TypeToken
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
@@ -26,9 +25,6 @@ import java.util.concurrent.TimeUnit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import java.io.File
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import android.content.Intent
 
 data class UserInfo(
     val userId: String = "",
@@ -88,9 +84,6 @@ object UserInfoManager {
     private const val KEY_FILES = "file_mappings"
     private const val KEY_CACHE_TIME = "cache_time"
     private const val CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 小时
-    private const val KEY_TEST_CODES = "test_codes"
-    private const val KEY_ACTIVE_USER_ID = "active_user_id"
-    private const val KEY_LAST_CHECK_TIME = "last_check_time"
 
 
     fun initialize(context: Context) {
@@ -111,22 +104,6 @@ object UserInfoManager {
         loadApiKeys(context)
         loadCache()
         Log.d(TAG, "UserInfoManager initialized")
-        // 检查是否需要运行测试码过期检查
-        CoroutineScope(Dispatchers.IO).launch {
-            val lastCheckTime = prefs.getLong(KEY_LAST_CHECK_TIME, 0)
-            val currentTime = System.currentTimeMillis()
-            val checkInterval = 24 * 60 * 60 * 1000L // 24 小时
-            if (currentTime - lastCheckTime >= checkInterval) {
-                checkExpiredTestCodes()
-                with(prefs.edit()) {
-                    putLong(KEY_LAST_CHECK_TIME, currentTime)
-                    apply()
-                }
-                Log.d(TAG, "Updated last check time: $currentTime")
-            } else {
-                Log.d(TAG, "No need to check test codes, last check: $lastCheckTime, current: $currentTime")
-            }
-        }
     }
 
     fun loadApiKeys(context: Context) {
@@ -165,141 +142,6 @@ object UserInfoManager {
 
     fun getDeviceId(): String {
         return Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-    }
-
-    suspend fun checkBinding(key: String, deviceId: String): Pair<Boolean, String?> {
-        val user = getUserInfoById(key) ?: return Pair(false, "無效的測試碼")
-        val currentDeviceCount = if (user.devices.contains(deviceId)) user.devices.size else user.devices.size + 1
-        if (currentDeviceCount > user.maxDevices) {
-            return Pair(false, "測試碼已綁定過多設備（最多${user.maxDevices}个）")
-        }
-        return Pair(true, null)
-    }
-
-    suspend fun updateBinding(key: String, deviceId: String): Pair<Boolean, String?> {
-        try {
-            val (isValid, errorMessage) = checkBinding(key, deviceId)
-            if (!isValid) {
-                Log.w(TAG, "绑定检查失败: key=$key, deviceId=$deviceId, error=$errorMessage")
-                return Pair(false, errorMessage)
-            }
-            // 在函数开头，替换原有的 user 获取逻辑
-            val (warnings, remoteUsers) = downloadRemoteUserInfo() // 强制刷新远程数据
-            val user = remoteUsers.find { it.userId == key } ?: run {
-                Log.e(TAG, "用户未找到: key=$key")
-                return Pair(false, "无效的测试码")
-            }
-            Log.d(TAG, "更新绑定开始: key=$key, deviceId=$deviceId, currentDevices=${user.devices}")
-
-            // 确定设备ID是否需要添加
-            val updatedDevices = if (user.devices.contains(deviceId)) {
-                user.devices
-            } else {
-                user.devices.toMutableList().apply { add(deviceId) }
-            }
-
-            // 更新D1数据库
-            val jsonBody = JSONObject().apply {
-                put("sql", "UPDATE test_codes SET devices = ? WHERE code = ?")
-                put("params", JSONArray().apply {
-                    put(gson.toJson(updatedDevices))
-                    put(key)
-                })
-            }
-            val response = executeD1Query(jsonBody.toString())
-            if (!response.optBoolean("success")) {
-                Log.e(TAG, "D1更新失败: key=$key, error=${response.optString("error")}")
-                return Pair(false, response.optString("error", "更新绑定失败"))
-            }
-            Log.d(TAG, "D1更新成功: key=$key, devices=$updatedDevices")
-
-            // 更新内存缓存
-            remoteUsersCache = remoteUsersCache?.map {
-                if (it.userId == key) it.copy(devices = updatedDevices) else it
-            }
-
-            // 更新rawJsonCache
-            val rawJson = rawJsonCache ?: JsonObject().apply {
-                add("warnings", JsonArray())
-                add("users", JsonArray())
-                addProperty("backupDate", SimpleDateFormat("yyyyMMdd", Locale.US).format(Date()))
-            }
-            val usersArray = rawJson.getAsJsonArray("users") ?: JsonArray()
-            var userFound = false
-            for (userElement in usersArray) {
-                if (userElement.isJsonObject && userElement.asJsonObject.get("userId")?.asString == key) {
-                    val newDevicesArray = JsonArray().apply { updatedDevices.forEach { add(it) } }
-                    userElement.asJsonObject.add("devices", newDevicesArray)
-                    userFound = true
-                    break
-                }
-            }
-            if (!userFound) {
-                val newUser = JsonObject().apply {
-                    addProperty("userId", user.userId)
-                    addProperty("userLimitDate", user.userLimitDate)
-                    addProperty("userType", user.userType)
-                    addProperty("vipUserUrl", user.vipUserUrl) // 使用最新 remoteUsers 的 vipUserUrl
-                    addProperty("maxDevices", user.maxDevices)
-                    add("devices", JsonArray().apply { updatedDevices.forEach { add(it) } })
-                    add("indemnify", JsonArray().apply { user.indemnify?.forEach { add(it) } })
-                }
-                usersArray.add(newUser)
-            }
-            rawJson.addProperty("backupDate", SimpleDateFormat("yyyyMMdd", Locale.US).format(Date()))
-            Log.d(TAG, "rawJsonCache更新: $rawJson")
-
-            // 序列化和验证JSON
-            val json = gson.toJson(rawJson)
-            try {
-                gson.fromJson(json, JsonObject::class.java)
-            } catch (e: JsonSyntaxException) {
-                Log.e(TAG, "rawJsonCache无效: ${e.message}")
-                return Pair(false, "数据格式错误")
-            }
-            val encodedContent = SourceEncoder.encodeJsonSource(json)
-            Log.d(TAG, "生成数据: key=$key, encodedContentLength=${encodedContent.length}")
-
-            // 仅上传到users_infon.txt
-            val uploadResult: Result<Unit> = DownGithubPrivate.uploadFile(
-                context = context,
-                repo = "horsenmail/yourtv",
-                filePath = USER_INFO_FILE,
-                branch = "main",
-                updatedContent = encodedContent,
-                commitMessage = "Update user binding for $key"
-            )
-            if (uploadResult.isSuccess) {
-                Log.d(TAG, "上传到 $USER_INFO_FILE 成功")
-            } else {
-                Log.e(TAG, "上传到 $USER_INFO_FILE 失败: ${uploadResult.exceptionOrNull()?.message}")
-            }
-
-            // 更新缓存和本地文件
-            rawJsonCache = rawJson
-            saveCache()
-            val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
-            saveUserInfo(
-                UserInfo(
-                    userId = key,
-                    userLimitDate = user.userLimitDate,
-                    userType = user.userType,
-                    vipUserUrl = user.vipUserUrl,
-                    maxDevices = user.maxDevices,
-                    devices = updatedDevices,
-                    userUpdateStatus = true,
-                    updateDate = today
-                )
-            )
-            // 新增：保存测试码和直播源文件名
-            val sourceName = user.vipUserUrl.substringAfterLast("/")
-            saveTestCode(key, sourceName)
-            Log.d(TAG, "绑定完成: key=$key, devices=$updatedDevices")
-            return Pair(true, null)
-        } catch (e: Exception) {
-            Log.e(TAG, "更新绑定失败: key=$key, error=${e.message}", e)
-            return Pair(false, "网络不佳，无法验证测试码")
-        }
     }
 
     suspend fun downloadRemoteUserInfo(forceRefresh: Boolean = false): Pair<List<String>, List<RemoteUserInfo>> {
@@ -619,66 +461,6 @@ object UserInfoManager {
         }
     }
 
-    fun validateKey(key: String, remoteUsers: List<RemoteUserInfo>): RemoteUserInfo? {
-        // 記錄輸入參數
-        Log.d(TAG, "validateKey called with key: $key, remoteUsers size: ${remoteUsers.size}")
-
-        // 查找用戶
-        val user = remoteUsers.find { it.userId == key }
-        if (user == null) {
-            Log.w(TAG, "No user found for key: $key")
-            // 清理失效测试码
-            val testCodes = getTestCodes().toMutableMap()
-            if (testCodes.remove(key) != null) {
-                with(prefs.edit()) {
-                    putString(KEY_TEST_CODES, gson.toJson(testCodes))
-                    apply()
-                }
-                Log.d(TAG, "Removed invalid test code: $key")
-            }
-            return null
-        }
-        Log.d(TAG, "Found user for key: $key, userLimitDate: ${user.userLimitDate}")
-
-        return try {
-            // 獲取當前日期
-            val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
-            Log.d(TAG, "Current date (formatted): $today")
-
-            // 選擇日期格式
-            val sdfInput = if (user.userLimitDate.contains("-")) {
-                Log.d(TAG, "Using yyyy-MM-dd format for userLimitDate: ${user.userLimitDate}")
-                SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            } else {
-                Log.d(TAG, "Using yyyyMMdd format for userLimitDate: ${user.userLimitDate}")
-                SimpleDateFormat("yyyyMMdd", Locale.US)
-            }
-
-            // 解析日期
-            val userDate = sdfInput.parse(user.userLimitDate)
-            val currentDate = SimpleDateFormat("yyyyMMdd", Locale.US).parse(today)
-            Log.d(TAG, "Parsed userDate: $userDate, currentDate: $currentDate")
-
-            // 檢查日期是否有效
-            if (userDate == null || currentDate == null) {
-                Log.e(TAG, "Date parsing failed: userDate=$userDate, currentDate=$currentDate, userLimitDate=${user.userLimitDate}")
-                return null
-            }
-
-            // 比較日期
-            if (!userDate.before(currentDate)) {
-                Log.d(TAG, "Key is valid: $key, userLimitDate=${user.userLimitDate} is not before $today")
-                user
-            } else {
-                Log.w(TAG, "Key expired: $key, userLimitDate=${user.userLimitDate} is before $today")
-                null
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to validate key: $key, userLimitDate=${user.userLimitDate}, error: ${e.message}", e)
-            null
-        }
-    }
-
     fun createDefaultUserInfo(): UserInfo {
         val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
         return UserInfo(
@@ -691,105 +473,6 @@ object UserInfoManager {
             userUpdateStatus = false,
             updateDate = today
         )
-    }
-
-    fun saveTestCode(userId: String, sourceName: String) {
-        val testCodes = getTestCodes().toMutableMap()
-        val cleanSourceName = sourceName.removeSuffix(".txt")
-        val filename = "$cleanSourceName.txt"
-        testCodes[userId] = cleanSourceName
-        try {
-            with(prefs.edit()) {
-                putString(KEY_TEST_CODES, gson.toJson(testCodes))
-                putString(KEY_ACTIVE_USER_ID, userId)
-                apply()
-            }
-            val savedCodes = getTestCodes()
-            if (savedCodes[userId] == cleanSourceName) {
-                Log.d(TAG, "Saved test code: userId=$userId, sourceName=$cleanSourceName, filename=$filename")
-            } else {
-                Log.e(TAG, "Failed to verify saved test code: userId=$userId, expected=$cleanSourceName, actual=$savedCodes")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to save test code: userId=$userId, error=${e.message}", e)
-        }
-    }
-
-    fun getTestCodes(): Map<String, String> {
-        return try {
-            prefs.getString(KEY_TEST_CODES, null)?.let {
-                gson.fromJson(it, object : TypeToken<Map<String, String>>() {}.type)
-            } ?: emptyMap()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load test codes: ${e.message}", e)
-            emptyMap()
-        }
-    }
-
-    fun getActiveUserId(): String? {
-        return prefs.getString(KEY_ACTIVE_USER_ID, null)
-    }
-
-    suspend fun checkExpiredTestCodes() {
-        Log.d(TAG, "Checking expired test codes")
-        val testCodes = getTestCodes().toMutableMap()
-        if (testCodes.isEmpty()) {
-            Log.d(TAG, "No test codes to check")
-            return
-        }
-        val remoteUsers = downloadRemoteUserInfo(forceRefresh = true).second
-        val expiredCodes = mutableListOf<String>()
-        for ((userId, sourceName) in testCodes) {
-            val isValid = validateKey(userId, remoteUsers)
-            if (isValid == null) {
-                expiredCodes.add(userId)
-                Log.w(TAG, "Test code expired: $userId, associated source: $sourceName")
-            }
-        }
-        if (expiredCodes.isNotEmpty()) {
-            val prefs = context.getSharedPreferences("SourceCache", Context.MODE_PRIVATE)
-            with(prefs.edit()) {
-                for (userId in expiredCodes) {
-                    val sourceName = testCodes[userId]
-                    // 修正文件名
-                    val filename = sourceName?.removeSuffix(".txt") + ".txt"
-                    val cacheFile = File(context.filesDir, "cache_$filename")
-                    if (cacheFile.exists()) {
-                        try {
-                            if (cacheFile.delete()) {
-                                Log.d(TAG, "Deleted cache file: cache_$filename for expired test code: $userId")
-                            } else {
-                                Log.w(TAG, "Failed to delete cache file: cache_$filename")
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error deleting cache file: cache_$filename", e)
-                        }
-                    } else {
-                        Log.d(TAG, "Cache file not found: cache_$filename")
-                    }
-                    remove("cache_$filename")
-                    remove("cache_time_$filename")
-                    remove("url_$filename")
-                    if (prefs.getString("active_source", null) == filename) {
-                        // 设置默认源
-                        putString("active_source", "default_channels.txt")
-                        Log.d(TAG, "Set active_source to default_channels.txt for expired test code: $userId")
-                    }
-                    testCodes.remove(userId)
-                    Log.d(TAG, "Removed cache entries for expired test code: $userId, filename: $filename")
-                }
-                putString(KEY_TEST_CODES, gson.toJson(testCodes))
-                apply()
-            }
-            try {
-                val intent = Intent("com.horsenma.yourtv.TEST_CODE_EXPIRED")
-                intent.putStringArrayListExtra("expired_codes", ArrayList(expiredCodes))
-                context.sendBroadcast(intent)
-                Log.d(TAG, "Broadcast sent for expired test codes: $expiredCodes")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to send broadcast for expired test codes: ${e.message}", e)
-            }
-        }
     }
 
 }

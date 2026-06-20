@@ -44,7 +44,6 @@ import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.collect
 import com.horsenma.yourtv.models.TVModel
 import androidx.core.view.isVisible
-import android.app.Dialog
 import android.content.Intent
 import androidx.annotation.RequiresApi
 import com.horsenma.yourtv.Utils.ViewModelUtils
@@ -116,27 +115,11 @@ class MainActivity : AppCompatActivity() {
 
     private var isSafeToPerformFragmentTransactions = false
     internal var usersInfo: List<String> = emptyList()
-    private var isLoadingInputVisible = false
-
     // 新增：禁用用户输入和画中画标志
     private var isInputDisabled = false
 
-    fun setLoadingInputVisible(visible: Boolean) {
-        isLoadingInputVisible = visible
-    }
-
-    private lateinit var userVerificationHandler: UserVerificationHandler
-    private lateinit var dialog: Dialog
-    private lateinit var verificationCallback: VerificationCallback
     private var lastSourceUpTime = 0L
     private val sourceUpDebounce = 2_000L
-
-    // Callback interface for verification dialog
-    interface VerificationCallback {
-        fun onKeyConfirmed(key: String)
-        fun onSkip()
-        fun onCompleted()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,28 +128,9 @@ class MainActivity : AppCompatActivity() {
 
         UserInfoManager.initialize(applicationContext)
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
-        userVerificationHandler = UserVerificationHandler(this, UserInfoManager, viewModel)
 
         val versionCode = packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
         updateManager = UpdateManager(this, versionCode)
-
-        // 初始化 dialog 和 verificationCallback
-        dialog = Dialog(this)
-        verificationCallback = object : VerificationCallback {
-            override fun onKeyConfirmed(key: String) {
-                Log.d(TAG, "Verification key confirmed: $key")
-                setLoadingInputVisible(false)
-            }
-            override fun onSkip() {
-                Log.d(TAG, "Verification skipped")
-                setLoadingInputVisible(false)
-            }
-            override fun onCompleted() {
-                Log.d(TAG, "Verification completed")
-                setLoadingInputVisible(false)
-                hideFragment(loadingFragment)
-            }
-        }
 
         // 初始化所有 Fragment
         if (savedInstanceState == null) {
@@ -1250,11 +1214,6 @@ class MainActivity : AppCompatActivity() {
                 return handleSettingsKeyPress()
             }
             KEYCODE_DPAD_UP, KEYCODE_CHANNEL_UP -> {
-                if (isLoadingInputVisible) {
-                    if (userVerificationHandler.isInputUIVisible()) {
-                        return true // 焦点切换由 XML 的 nextFocusUp 处理
-                    }
-                }
                 if (menuFragment.isAdded && !menuFragment.isHidden) {
                     return false
                 }
@@ -1266,11 +1225,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             KEYCODE_DPAD_DOWN, KEYCODE_CHANNEL_DOWN -> {
-                if (isLoadingInputVisible) {
-                    if (userVerificationHandler.isInputUIVisible()) {
-                        return true // 焦点切换由 XML 的 nextFocusDown 处理
-                    }
-                }
                 if (menuFragment.isAdded && !menuFragment.isHidden) {
                     return false
                 }
@@ -1282,28 +1236,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             KEYCODE_ENTER, KEYCODE_DPAD_CENTER -> {
-                if (isLoadingInputVisible) {
-                    if (userVerificationHandler.isInputUIVisible()) {
-                        val currentFocus = currentFocus
-                        if (currentFocus?.id == R.id.confirm_button) {
-                            val key = userVerificationHandler.getKeyInputText()?.trim() ?: ""
-                            if (key.isNotEmpty() && key.matches("[0-9A-Z]{1,20}".toRegex())) {
-                                userVerificationHandler.triggerConfirm(key, dialog, verificationCallback)
-                            } else {
-                                userVerificationHandler.showErrorText(getString(R.string.error_invalid_code))
-                                userVerificationHandler.requestKeyInputFocus()
-                            }
-                            settingActive() // 新增：确认按钮按键重置计时器
-                            return true
-                        } else if (currentFocus?.id == R.id.skip_button) {
-                            userVerificationHandler.triggerSkip(dialog, verificationCallback)
-                            settingActive() // 新增：确认按钮按键重置计时器
-                            return true
-                        }
-                        settingActive() // 新增：确认按钮按键重置计时器
-                        return true
-                    }
-                }
                 if (channelFragment.isAdded && channelFragment.isVisible) {
                     channelFragment.playNow()
                     return true
@@ -1332,20 +1264,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             KEYCODE_DPAD_LEFT -> {
-                if (isLoadingInputVisible) {
-                    val loadingFragment = supportFragmentManager.findFragmentByTag(LoadingFragment.TAG) as? LoadingFragment
-                    if (loadingFragment != null && loadingFragment.isVisible && userVerificationHandler.isInputUIVisible()) {
-                        val currentFocus = currentFocus
-                        if (currentFocus?.id == R.id.skip_button) {
-                            val confirmButton = loadingFragment.view?.findViewById<View>(R.id.confirm_button)
-                            confirmButton?.isFocusable = true
-                            confirmButton?.isFocusableInTouchMode = true
-                            confirmButton?.requestFocus()
-                            return true
-                        }
-                        return true
-                    }
-                }
                 if (settingFragment.isAdded && !settingFragment.isHidden) {
                     return false
                 }
@@ -1354,20 +1272,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             KEYCODE_DPAD_RIGHT -> {
-                if (isLoadingInputVisible) {
-                    val loadingFragment = supportFragmentManager.findFragmentByTag(LoadingFragment.TAG) as? LoadingFragment
-                    if (loadingFragment != null && loadingFragment.isVisible && userVerificationHandler.isInputUIVisible()) {
-                        val currentFocus = currentFocus
-                        if (currentFocus?.id == R.id.confirm_button) {
-                            val skipButton = loadingFragment.view?.findViewById<View>(R.id.skip_button)
-                            skipButton?.isFocusable = true
-                            skipButton?.isFocusableInTouchMode = true
-                            skipButton?.requestFocus()
-                            return true
-                        }
-                        return true
-                    }
-                }
                 if (menuFragment.isAdded && !menuFragment.isHidden ||
                     settingFragment.isAdded && !settingFragment.isHidden ||
                     programFragment.isAdded && !programFragment.isHidden) {

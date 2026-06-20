@@ -20,14 +20,7 @@ import com.horsenma.yourtv.models.TVListModel
 import com.horsenma.yourtv.models.TVModel
 import java.io.File
 import androidx.core.content.edit
-import android.content.BroadcastReceiver
-import android.content.Intent
-import android.content.IntentFilter
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.LifecycleObserver
-import androidx.lifecycle.OnLifecycleEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
@@ -154,31 +147,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, TVListAdapter.ItemLi
         binding.group.addOnScrollListener(scrollListener)
         binding.list.addOnScrollListener(scrollListener)
         binding.menu.setOnTouchListener(onTouchListener)
-
-        // 注册广播接收器
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == "com.horsenma.yourtv.TEST_CODE_EXPIRED") {
-                    Log.d(TAG, "Received test code expired broadcast")
-                    setupSourceSwitcher()
-                }
-            }
-        }
-        val filter = IntentFilter("com.horsenma.yourtv.TEST_CODE_EXPIRED")
-        ContextCompat.registerReceiver(
-            context,
-            receiver,
-            filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
-
-        // 在 onDestroyView 中注销
-        viewLifecycleOwner.lifecycle.addObserver(object : LifecycleObserver {
-            @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-            fun onDestroy() {
-                context?.unregisterReceiver(receiver)
-            }
-        })
 
     }
 

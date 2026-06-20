@@ -1117,41 +1117,6 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun deleteCacheByTestCode(userId: String) {
-        val testCodes = UserInfoManager.getTestCodes()
-        val sourceName = testCodes[userId] ?: return
-        val filename = "${sourceName}.txt"
-        val prefs = context.getSharedPreferences("SourceCache", Context.MODE_PRIVATE)
-        val cacheFile = File(appDirectory, "cache_$filename")
-
-        viewModelScope.launch(Dispatchers.IO) {
-            if (cacheFile.exists()) {
-                cacheFile.delete()
-                Log.d(TAG, "Deleted cache file: cache_$filename for test code: $userId")
-            }
-            with(prefs.edit()) {
-                remove("cache_$filename")
-                remove("cache_time_$filename")
-                remove("url_$filename")
-                if (prefs.getString("active_source", null) == filename) {
-                    remove("active_source")
-                    Log.d(TAG, "Cleared active_source as it matched expired test code's filename: $filename")
-                    // 切换到默认源
-                    withContext(Dispatchers.Main) {
-                        reset(context)
-                    }
-                }
-                apply()
-            }
-            Log.d(TAG, "Cleared cache entries for test code: $userId, filename: $filename")
-            // 通知 UI 更新
-            withContext(Dispatchers.Main) {
-                context.getString(R.string.test_code_expired, userId).showToast()
-                _channelsOk.value = true
-            }
-        }
-    }
-
     companion object {
         private const val TAG = "MainViewModel"
         const val CACHE_FILE_NAME = "codechannels.txt"
