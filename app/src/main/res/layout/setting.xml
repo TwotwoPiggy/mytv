@@ -107,7 +107,6 @@
                     android:textStyle="bold"
                     android:nextFocusRight="@id/clear"
                     android:nextFocusLeft="@id/remote_settings"
-                    android:nextFocusDown="@id/verify_user"
                     android:nextFocusUp="@+id/version"
                     android:focusable="true"
                     android:focusableInTouchMode="true" />
@@ -142,23 +141,10 @@
                     android:textSize="14sp"
                     android:text="@string/check_version"
                     android:textStyle="bold"
-                    android:nextFocusRight="@id/verify_user"
+                    android:nextFocusRight="@id/appreciate"
                     android:nextFocusLeft="@id/appreciate"
                     android:nextFocusDown="@+id/switchEnableWebviewType"
                     android:nextFocusUp="@id/remote_settings"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true" />
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/verify_user"
-                    android:layout_width="100dp"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/blur"
-                    android:layout_marginEnd="5dp"
-                    android:text="@string/verify_user"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:nextFocusRight="@id/appreciate"
-                    android:nextFocusLeft="@id/check_version"
                     android:focusable="true"
                     android:focusableInTouchMode="true" />
                 <androidx.appcompat.widget.AppCompatButton
@@ -171,7 +157,7 @@
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:nextFocusRight="@id/check_version"
-                    android:nextFocusLeft="@id/verify_user"
+                    android:nextFocusLeft="@id/check_version"
                     android:focusable="true"
                     android:focusableInTouchMode="true" />
             </LinearLayout>

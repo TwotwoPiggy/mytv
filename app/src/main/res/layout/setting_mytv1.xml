@@ -109,7 +109,7 @@
                     android:nextFocusRight="@id/clear"
                     android:nextFocusLeft="@id/remote_settings"
                     android:nextFocusUp="@+id/version"
-                    android:nextFocusDown="@id/verify_user"
+                    android:nextFocusDown="@+id/switchEnableWebviewType"
                     android:focusable="true"
                     android:focusableInTouchMode="true" />
 
@@ -144,7 +144,7 @@
                     android:textSize="14sp"
                     android:text="@string/check_version"
                     android:textStyle="bold"
-                    android:nextFocusRight="@id/verify_user"
+                    android:nextFocusRight="@id/appreciate"
                     android:nextFocusLeft="@id/appreciate"
                     android:nextFocusUp="@id/remote_settings"
                     android:nextFocusDown="@+id/switchEnableWebviewType"
@@ -175,7 +175,7 @@
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:nextFocusRight="@id/check_version"
-                    android:nextFocusLeft="@id/verify_user"
+                    android:nextFocusLeft="@id/check_version"
                     android:nextFocusUp="@+id/clear"
                     android:nextFocusDown="@+id/switchEnableWebviewType"
                     android:focusable="true"

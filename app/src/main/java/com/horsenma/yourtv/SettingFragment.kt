@@ -316,10 +316,6 @@ class SettingFragment : Fragment() {
             (activity as? MainActivity)?.settingActive() // 新增
         }
 
-        binding.verifyUser.setOnClickListener {
-            showVerificationDialog()
-        }
-
         val txtTextSize = application.px2PxFont(binding.versionName.textSize)
 
         binding.content.layoutParams.width =
@@ -340,8 +336,7 @@ class SettingFragment : Fragment() {
 
         val btnWidth = application.px2Px(binding.confirmConfig.layoutParams.width)
 
-        val btnLayoutParams = binding.verifyUser.layoutParams as ViewGroup.MarginLayoutParams
-        btnLayoutParams.marginEnd = application.px2Px(binding.verifyUser.marginEnd)
+        val btnLayoutParams = binding.confirmConfig.layoutParams as ViewGroup.MarginLayoutParams
 
         binding.versionName.textSize = txtTextSize
 
@@ -350,7 +345,6 @@ class SettingFragment : Fragment() {
             binding.confirmConfig,
             binding.clear,
             binding.checkVersion,
-            binding.verifyUser,
             binding.appreciate,
         )) {
             i.layoutParams.width = btnWidth
@@ -671,67 +665,6 @@ class SettingFragment : Fragment() {
                     Toast.makeText(requireContext(), R.string.grant_storage_permissions, Toast.LENGTH_LONG).show()
                 }
             }
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun showVerificationDialog() {
-        val mainActivity = activity as? MainActivity
-        val dialog = Dialog(requireContext()).apply {
-            setContentView(R.layout.loading)
-            setCancelable(true)
-            window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            window?.setLayout(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        }
-        val callback = object : MainActivity.VerificationCallback {
-            override fun onKeyConfirmed(key: String) {}
-            override fun onSkip() {}
-            override fun onCompleted() {
-                hideSelf()
-                mainActivity?.settingActive()
-            }
-        }
-
-        dialog.setOnShowListener {
-            dialog.findViewById<View>(R.id.loading)?.setOnTouchListener { _, _ ->
-                mainActivity?.settingActive()
-                false
-            }
-            dialog.findViewById<View>(R.id.confirm_button)?.setOnClickListener {
-                val handler = UserVerificationHandler(mainActivity!!, UserInfoManager, viewModel)
-                val key = handler.getKeyInputText()?.trim() ?: ""
-                if (key.isNotEmpty() && key.matches("[0-9A-Z]{1,20}".toRegex())) {
-                    handler.triggerConfirm(key, dialog, callback)
-                } else {
-                    handler.showErrorText("測試碼格式錯，請重新輸入。")
-                    handler.requestKeyInputFocus()
-                }
-                mainActivity?.settingActive()
-            }
-            dialog.findViewById<View>(R.id.skip_button)?.setOnClickListener {
-                UserVerificationHandler(mainActivity!!, UserInfoManager, viewModel).triggerSkip(dialog, callback)
-                mainActivity?.settingActive()
-            }
-        }
-
-        // Show dialog before handleUserVerification
-        try {
-            dialog.show()
-            Log.d(TAG, "showVerificationDialog: Dialog shown")
-        } catch (e: Exception) {
-            Log.e(TAG, "showVerificationDialog: Failed to show dialog: ${e.message}", e)
-            R.string.verify_user_error.showToast()
-            return
-        }
-
-        // Use UserVerificationHandler
-        mainActivity?.let {
-            val handler = UserVerificationHandler(it, UserInfoManager, viewModel)
-            handler.handleUserVerification(dialog, callback)
-        } ?: run {
-            Log.e(TAG, "MainActivity not available for verification")
-            R.string.verify_user_error.showToast()
-            dialog.dismiss()
         }
     }
 
