@@ -13,6 +13,9 @@
 - `LIMITS-02`
 - `PERF-02`
 
+Plans:
+- [ ] TBD (run /gsd-plan-phase 1 to break down)
+
 ---
 
 ## Phase 2: Remote Interaction & UI Aesthetics (按键防抖与界面美化适配)
@@ -32,3 +35,17 @@
 - `REMOTE-02`
 - `PERF-01`
 - `PERF-03`
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 2 to break down)
+
+---
+
+## Phase 3: 前端所有文字改成简体中文, 项目中所有繁体也都改成简体中文
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 3 to break down)

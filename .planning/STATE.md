@@ -9,7 +9,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 
 ## Current Position
 
-Phase: 1 of 2 (Verification Bypass & Playback Architecture)
+Phase: 1 of 3 (Verification Bypass & Playback Architecture)
 Plan: 0 of 0 in current phase (no plans created yet)
 Status: Ready to plan
 Last activity: 2026-06-20 — Project initialized.
@@ -29,6 +29,7 @@ Progress: [░░░░░░░░░░] 0%
 |-------|-------|-------|----------|
 | Phase 1 | 0 | 0 | 0 min |
 | Phase 2 | 0 | 0 | 0 min |
+| Phase 3 | 0 | 0 | 0 min |
 
 **Recent Trend:**
 - Last 5 plans: N/A
@@ -44,6 +45,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 - [Phase 1]: 彻底移除验证弹窗与校验以实现无限制开机播放 (Outcome: Pending).
 - [Phase 2]: 优化 TV 遥控方向键防抖与界面美观 (Outcome: Pending).
+
+### Roadmap Evolution
+
+- Phase 3 added: 前端所有文字改成简体中文, 项目中所有繁体也都改成简体中文
 
 ### Pending Todos
 
