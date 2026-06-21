@@ -984,27 +984,34 @@ class MainViewModel : ViewModel() {
             )
 
             // 生成 IPTV TVModel
-            // IPTV 频道排在 WebView 频道前面，所以 listIndex 从 webviewModels.size 开始
-            val iptvOffset = webviewModels.size
             val iptvModels = iptvList.mapIndexed { index, tv ->
                 TVModel(tv.copy(id = index)).apply {
                     setLike(SP.getLike(index))
                     setGroupIndex(2)
-                    listIndex = iptvOffset + index
+                    listIndex = index
                 }
             }
 
-            // 合并所有 TVModel
+            // 合并所有 TVModel - IPTV 频道优先排在前面
             val modelMap = mutableMapOf<String, TVModel>()
-            (iptvModels + webviewModels).forEach { tvModel ->
+            // 先添加 IPTV 频道（确保它们在列表前面）
+            iptvModels.forEach { tvModel ->
+                val key = (tvModel.tv.group + tvModel.tv.name).ifEmpty { tvModel.tv.title }
+                if (!modelMap.containsKey(key)) {
+                    modelMap[key] = tvModel
+                }
+            }
+            // 再添加 WebView 频道（只添加不在 IPTV 中的）
+            webviewModels.forEach { tvModel ->
                 val key = (tvModel.tv.group + tvModel.tv.name).ifEmpty { tvModel.tv.title }
                 if (modelMap.containsKey(key)) {
+                    // 合并 URI
                     modelMap[key]?.tv?.uris = (modelMap[key]?.tv?.uris.orEmpty() + tvModel.tv.uris).distinct()
                 } else {
                     modelMap[key] = tvModel
                 }
             }
-            val listModelNew = modelMap.values.sortedBy { it.listIndex }.toMutableList()
+            val listModelNew = modelMap.values.toList()
 
             val groupMap = mutableMapOf<String, MutableList<TVModel>>()
             listModelNew.forEach { tvModel ->
