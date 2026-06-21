@@ -844,6 +844,45 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "sourceUp: switched to source ${tvModel.videoIndexValue + 1}, uris: ${tvModel.tv.uris.size}")
     }
 
+    /**
+     * 显示源列表侧边栏
+     */
+    fun showSourceList() {
+        val tvModel = viewModel.groupModel.getCurrent() ?: run {
+            Log.w(TAG, "showSourceList: no current tvModel")
+            return
+        }
+
+        val urls = tvModel.tv.uris.filter { it.isNotBlank() }
+        if (urls.isEmpty()) {
+            R.string.no_available_sources.showToast()
+            return
+        }
+        if (urls.size <= 1) {
+            R.string.no_multiple_sources.showToast()
+            return
+        }
+
+        // 设置源选择回调
+        sourceSelectFragment.onSourceSelected = { position ->
+            if (position != tvModel.videoIndexValue) {
+                // 切换到选中的源
+                tvModel.setVideoIndex(position)
+                tvModel.confirmVideoIndex()
+                playerFragment.switchSource(tvModel)
+                showSourceInfo(position + 1, urls.size)
+            }
+        }
+
+        // 显示源列表
+        showFragment(sourceSelectFragment)
+        sourceSelectFragment.show(
+            channelName = tvModel.tv.title,
+            sourceUrls = urls,
+            currentIndex = tvModel.videoIndexValue
+        )
+    }
+
     private fun showSourceInfo(sourceIndex: Int, totalSources: Int) {
         val toast = Toast.makeText(
             this,
@@ -1264,8 +1303,8 @@ class MainActivity : AppCompatActivity() {
 
                 if (timeSinceLastPress <= 600) { // 600ms 内连续按
                     menuPressCount++
-                    if (menuPressCount >= 2) { // 连续按2次，显示 sourceSelectFragment
-                        showFragment(sourceSelectFragment)
+                    if (menuPressCount >= 2) { // 连续按2次，显示源列表
+                        showSourceList()
                         menuPressCount = 0
                         handler.removeCallbacks(handleEnterRunnable)
                         return true

@@ -177,48 +177,15 @@ class PlayerFragment : Fragment(), ExoPlayerCallback {
         setSourceButtonVisibility(isTouchScreenDevice() && SP.showSourceButton)
         Log.d(TAG, "btn_source initialized: visibility=${btnSource.isVisible}, isTouchScreen=${isTouchScreenDevice()}, showSourceButton=${SP.showSourceButton}")
 
-        // 设置 btn_source 的双击手势监听
-        val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onDoubleTap(e: MotionEvent): Boolean {
-                if (btnSource.isEnabled && btnSource.isVisible) {
-                    (activity as? MainActivity)?.sourceUp()
-                    Log.d(TAG, "btn_source double tapped, triggering sourceUp")
-                    return true
-                }
-                return false
-            }
-            override fun onLongPress(e: MotionEvent) {
-                if (btnSource.isEnabled && btnSource.isVisible) {
-                    val mainActivity = activity as? MainActivity
-                    mainActivity?.showFragment(mainActivity.sourceSelectFragment)
-                    Log.d(TAG, "btn_source long pressed, showing SourceSelectFragment")
-                }
-            }
-        })
-
-        // 确保 btn_source 优先接收触摸事件
-        btnSource.setOnTouchListener { _, event ->
+        // 设置 btn_source 的点击监听
+        btnSource.setOnClickListener {
             if (btnSource.isEnabled && btnSource.isVisible) {
-                gestureDetector.onTouchEvent(event)
-                true // 消耗事件，防止 PlayerView 拦截
-            } else {
-                false // 不可见或禁用时透传事件
+                val mainActivity = activity as? MainActivity
+                mainActivity?.showSourceList()
+                Log.d(TAG, "btn_source clicked, showing source list")
             }
         }
 
-        // 防止 PlayerView 拦截 btn_source 的事件
-        binding.playerView.setOnTouchListener { _, event ->
-            val buttonRect = android.graphics.Rect()
-            btnSource.getGlobalVisibleRect(buttonRect)
-            if (btnSource.isVisible && buttonRect.contains(event.rawX.toInt(), event.rawY.toInt())) {
-                btnSource.dispatchTouchEvent(event)
-                true
-            } else {
-                // 传递给 MainActivity 的 gestureDetector
-                (activity as? MainActivity)?.gestureDetector?.onTouchEvent(event) ?: false
-                true // 始终消耗事件
-            }
-        }
     }
 
     // 控制 btn_source 可见性
