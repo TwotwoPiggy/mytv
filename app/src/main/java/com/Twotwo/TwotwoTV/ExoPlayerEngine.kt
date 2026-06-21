@@ -15,6 +15,7 @@ import androidx.media3.common.Player.DISCONTINUITY_REASON_AUTO_TRANSITION
 import androidx.media3.common.Player.REPEAT_MODE_ALL
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.mediacodec.MediaCodecInfo
@@ -95,8 +96,22 @@ class ExoPlayerEngine {
             else DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
         )
 
+        // 根据设备内存调整缓冲区大小，低端设备使用更小的缓冲区
+        val maxMemoryMB = Runtime.getRuntime().maxMemory() / (1024 * 1024)
+        val isLowEnd = maxMemoryMB < 512
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                if (isLowEnd) 15_000 else DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
+                if (isLowEnd) 30_000 else DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
+                2_500,
+                5_000
+            )
+            .build()
+        Log.d(TAG, "ExoPlayer buffer: maxMemoryMB=$maxMemoryMB, isLowEnd=$isLowEnd")
+
         player = ExoPlayer.Builder(context)
             .setRenderersFactory(renderersFactory)
+            .setLoadControl(loadControl)
             .build()
         player?.repeatMode = REPEAT_MODE_ALL
         player?.playWhenReady = true
@@ -196,7 +211,11 @@ class ExoPlayerEngine {
             val mediaSource = model.getMediaSource()
             try {
                 val hlsMediaSource = if (mediaSource != null && videoUrl.endsWith(".m3u8")) {
-                    HlsMediaSource.Factory(DefaultHttpDataSource.Factory())
+                    HlsMediaSource.Factory(
+                        DefaultHttpDataSource.Factory()
+                            .setConnectTimeoutMs(30_000)
+                            .setReadTimeoutMs(30_000)
+                    )
                         .setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy(3))
                         .createMediaSource(mediaItem)
                 } else {
@@ -517,12 +536,15 @@ class ExoPlayerEngine {
                     return softwareCodecs.toMutableList()
                 }
             }
+            // H.265: 仅在 API 23 或软解模式下优先软件解码器，否则保留默认顺序（硬件优先）
             if (mimeType == MimeTypes.VIDEO_H265 && !requiresSecureDecoder && !requiresTunnelingDecoder) {
-                if (infos.isNotEmpty()) {
-                    val infosNew = infos.find { it.name == "c2.android.hevc.decoder" }
-                        ?.let { mutableListOf(it) }
-                    if (infosNew != null) {
-                        return infosNew
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M || SP.softDecode) {
+                    if (infos.isNotEmpty()) {
+                        val infosNew = infos.find { it.name == "c2.android.hevc.decoder" }
+                            ?.let { mutableListOf(it) }
+                        if (infosNew != null) {
+                            return infosNew
+                        }
                     }
                 }
             }

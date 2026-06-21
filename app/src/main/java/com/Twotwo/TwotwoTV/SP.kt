@@ -46,9 +46,9 @@ object SP {
     private const val RESOLUTION_CACHE_TIMESTAMP_PREFIX = "resolution_timestamp_"
     private const val CACHE_DURATION = 24 * 60 * 60 * 1000L // 24 小时
 
-    // 移除静态常量，改用动态默认值
+    // 移除静态常量，改用动态默认�?
     private var DEFAULT_SOFT_DECODE: Boolean = false
-    internal var DEFAULT_FULL_SCREEN_MODE: Boolean = true
+    internal var DEFAULT_FULL_SCREEN_MODE: Boolean = false
 
     const val DEFAULT_ENABLE_WEBVIEW_TYPE = true
     const val DEFAULT_ENABLE_SCREEN_OFF_AUDIO = true
@@ -80,6 +80,10 @@ object SP {
     private val typeSourceList = Global.typeSourceList
     private val typeStableSourceList = Global.typeStableSourceList
 
+    // getStableSources 缓存，避免重�?JSON 反序列化
+    private var cachedStableSources: List<StableSource>? = null
+    private var stableSourcesCacheKey: String? = null
+
     // 判断设备是否为触摸屏设备
     @SuppressLint("ServiceCast")
     private fun isTouchScreenDevice(context: Context): Boolean {
@@ -90,19 +94,19 @@ object SP {
         return hasTouchScreen && !isTv
     }
 
-    // 初始化默认值
+    // 初始化默认�?
     private fun initDefaultValues(context: Context) {
         DEFAULT_SOFT_DECODE = isTouchScreenDevice(context) // 触摸屏为 true，电视为 false
-        DEFAULT_FULL_SCREEN_MODE = isTouchScreenDevice(context) // 触摸屏为 true，电视为 false
+        DEFAULT_FULL_SCREEN_MODE = false // 默认关闭全屏拉伸模式
     }
 
     fun init(context: Context) {
-        // 先初始化默认值
+        // 先初始化默认�?
         initDefaultValues(context)
 
         sp = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
 
-        // 初始化 showSourceButton
+        // 初始�?showSourceButton
         if (!sp.contains(KEY_SHOW_SOURCE_BUTTON)) {
             sp.edit(commit = true) { putBoolean(KEY_SHOW_SOURCE_BUTTON, DEFAULT_SHOW_SOURCE_BUTTON) }
         }
@@ -111,75 +115,75 @@ object SP {
             sp.edit(commit = true) { putBoolean(KEY_SOFT_DECODE, DEFAULT_SOFT_DECODE) }
         }
 
-        // 初始化 fullScreenModeLiveData
+        // 初始�?fullScreenModeLiveData
         fullScreenModeLiveData.postValue(fullScreenMode)
     }
 
     var enableScreenOffAudio: Boolean
         get() = sp.getBoolean(KEY_ENABLE_SCREEN_OFF_AUDIO, DEFAULT_ENABLE_SCREEN_OFF_AUDIO)
-        set(value) = sp.edit() { putBoolean(KEY_ENABLE_SCREEN_OFF_AUDIO, value) }
+        set(value) = sp.edit { putBoolean(KEY_ENABLE_SCREEN_OFF_AUDIO, value) }
 
     var channelReversal: Boolean
         get() = sp.getBoolean(KEY_CHANNEL_REVERSAL, DEFAULT_CHANNEL_REVERSAL)
-        set(value) = sp.edit() { putBoolean(KEY_CHANNEL_REVERSAL, value) }
+        set(value) = sp.edit { putBoolean(KEY_CHANNEL_REVERSAL, value) }
 
     var channelNum: Boolean
         get() = sp.getBoolean(KEY_CHANNEL_NUM, DEFAULT_CHANNEL_NUM)
-        set(value) = sp.edit() { putBoolean(KEY_CHANNEL_NUM, value) }
+        set(value) = sp.edit { putBoolean(KEY_CHANNEL_NUM, value) }
 
     var time: Boolean
         get() = sp.getBoolean(KEY_TIME, DEFAULT_TIME)
-        set(value) = sp.edit() { putBoolean(KEY_TIME, value) }
+        set(value) = sp.edit { putBoolean(KEY_TIME, value) }
 
     var bootStartup: Boolean
         get() = sp.getBoolean(KEY_BOOT_STARTUP, DEFAULT_BOOT_STARTUP)
-        set(value) = sp.edit() { putBoolean(KEY_BOOT_STARTUP, value) }
+        set(value) = sp.edit { putBoolean(KEY_BOOT_STARTUP, value) }
 
     var positionGroup: Int
         get() = sp.getInt(KEY_POSITION_GROUP, DEFAULT_POSITION_GROUP)
-        set(value) = sp.edit() { putInt(KEY_POSITION_GROUP, value) }
+        set(value) = sp.edit { putInt(KEY_POSITION_GROUP, value) }
 
     var position: Int
         get() = sp.getInt(KEY_POSITION, DEFAULT_POSITION)
-        set(value) = sp.edit() { putInt(KEY_POSITION, value) }
+        set(value) = sp.edit { putInt(KEY_POSITION, value) }
 
     var positionSub: Int
         get() = sp.getInt(KEY_POSITION_SUB, 0)
-        set(value) = sp.edit() { putInt(KEY_POSITION_SUB, value) }
+        set(value) = sp.edit { putInt(KEY_POSITION_SUB, value) }
 
     var repeatInfo: Boolean
         get() = sp.getBoolean(KEY_REPEAT_INFO, DEFAULT_REPEAT_INFO)
-        set(value) = sp.edit() { putBoolean(KEY_REPEAT_INFO, value) }
+        set(value) = sp.edit { putBoolean(KEY_REPEAT_INFO, value) }
 
     var configUrl: String?
         get() = sp.getString(KEY_CONFIG_URL, DEFAULT_CONFIG_URL)
-        set(value) = sp.edit() { putString(KEY_CONFIG_URL, value) }
+        set(value) = sp.edit { putString(KEY_CONFIG_URL, value) }
 
     var channel: Int
         get() = sp.getInt(KEY_CHANNEL, DEFAULT_CHANNEL)
-        set(value) = sp.edit() { putInt(KEY_CHANNEL, value) }
+        set(value) = sp.edit { putInt(KEY_CHANNEL, value) }
 
     var compactMenu: Boolean
         get() = sp.getBoolean(KEY_COMPACT_MENU, DEFAULT_COMPACT_MENU)
-        set(value) = sp.edit() { putBoolean(KEY_COMPACT_MENU, value) }
+        set(value) = sp.edit { putBoolean(KEY_COMPACT_MENU, value) }
 
     var showAllChannels: Boolean
         get() = sp.getBoolean(KEY_SHOW_ALL_CHANNELS, DEFAULT_SHOW_ALL_CHANNELS)
-        set(value) = sp.edit() { putBoolean(KEY_SHOW_ALL_CHANNELS, value) }
+        set(value) = sp.edit { putBoolean(KEY_SHOW_ALL_CHANNELS, value) }
 
     var defaultLike: Boolean
         get() = sp.getBoolean(KEY_DEFAULT_LIKE, false)
-        set(value) = sp.edit() { putBoolean(KEY_DEFAULT_LIKE, value) }
+        set(value) = sp.edit { putBoolean(KEY_DEFAULT_LIKE, value) }
 
     var displaySeconds: Boolean
         get() = sp.getBoolean(KEY_DISPLAY_SECONDS, DEFAULT_DISPLAY_SECONDS)
-        set(value) = sp.edit() { putBoolean(KEY_DISPLAY_SECONDS, value) }
+        set(value) = sp.edit { putBoolean(KEY_DISPLAY_SECONDS, value) }
 
     var softDecode: Boolean
         get() = sp.getBoolean(KEY_SOFT_DECODE, DEFAULT_SOFT_DECODE)
         set(value) {
             if (sp.getBoolean(KEY_SOFT_DECODE, DEFAULT_SOFT_DECODE) != value) {
-                sp.edit(commit = true) { putBoolean(KEY_SOFT_DECODE, value) }
+                sp.edit { putBoolean(KEY_SOFT_DECODE, value) }
             }
         }
 
@@ -196,48 +200,48 @@ object SP {
             stringSet.remove(id.toString())
         }
 
-        sp.edit() { putStringSet(KEY_LIKE, stringSet) }
+        sp.edit { putStringSet(KEY_LIKE, stringSet) }
     }
 
     fun deleteLike() {
-        sp.edit() { remove(KEY_LIKE) }
+        sp.edit { remove(KEY_LIKE) }
     }
 
     var proxy: String?
         get() = sp.getString(KEY_PROXY, DEFAULT_PROXY)
-        set(value) = sp.edit() { putString(KEY_PROXY, value) }
+        set(value) = sp.edit { putString(KEY_PROXY, value) }
 
     var epg: String?
         get() = sp.getString(KEY_EPG, DEFAULT_EPG)
-        set(value) = sp.edit() { putString(KEY_EPG, value) }
+        set(value) = sp.edit { putString(KEY_EPG, value) }
 
     var version: String?
         get() = sp.getString(KEY_VERSION, "")
-        set(value) = sp.edit() { putString(KEY_VERSION, value) }
+        set(value) = sp.edit { putString(KEY_VERSION, value) }
 
     var logTimes: Int
         get() = sp.getInt(KEY_LOG_TIMES, DEFAULT_LOG_TIMES)
-        set(value) = sp.edit() { putInt(KEY_LOG_TIMES, value) }
+        set(value) = sp.edit { putInt(KEY_LOG_TIMES, value) }
 
     var sources: String?
         get() = sp.getString(KEY_SOURCES, null) ?: DEFAULT_SOURCES
-        set(value) = sp.edit() { putString(KEY_SOURCES, value) }
+        set(value) = sp.edit { putString(KEY_SOURCES, value) }
 
     var lastDownloadTime: Long
         get() = sp.getLong("lastDownloadTime", 0L)
-        set(value) = sp.edit() { putLong("lastDownloadTime", value) }
+        set(value) = sp.edit { putLong("lastDownloadTime", value) }
 
     var autoSwitchSource: Boolean
         get() = sp.getBoolean(KEY_AUTO_SWITCH_SOURCE, DEFAULT_AUTO_SWITCH_SOURCE)
-        set(value) = sp.edit() { putBoolean(KEY_AUTO_SWITCH_SOURCE, value) }
+        set(value) = sp.edit { putBoolean(KEY_AUTO_SWITCH_SOURCE, value) }
 
     var stableSources: String?
         get() = sp.getString(KEY_STABLE_SOURCES, null)
-        set(value) = sp.edit() { putString(KEY_STABLE_SOURCES, value) }
+        set(value) = sp.edit { putString(KEY_STABLE_SOURCES, value) }
 
     var showSourceButton: Boolean
         get() = sp.getBoolean(KEY_SHOW_SOURCE_BUTTON, DEFAULT_SHOW_SOURCE_BUTTON)
-        set(value) = sp.edit() { putBoolean(KEY_SHOW_SOURCE_BUTTON, value) }
+        set(value) = sp.edit { putBoolean(KEY_SHOW_SOURCE_BUTTON, value) }
 
     var enableWebviewType: Boolean
         get() = true
@@ -248,7 +252,7 @@ object SP {
     var fullScreenMode: Boolean
         get() {
             if (!::sp.isInitialized) {
-                return DEFAULT_FULL_SCREEN_MODE // 默认值，防止未初始化时崩溃
+                return DEFAULT_FULL_SCREEN_MODE // 默认值，防止未初始化时崩�?
             }
             return sp.getBoolean(KEY_FULL_SCREEN_MODE, DEFAULT_FULL_SCREEN_MODE)
         }
@@ -261,11 +265,18 @@ object SP {
 
     fun getStableSources(): List<StableSource> {
         val json = stableSources ?: return emptyList()
+        // 使用缓存避免重复 JSON 反序列化
+        if (cachedStableSources != null && stableSourcesCacheKey == json) {
+            return cachedStableSources!!
+        }
         return try {
             val sources = gson.fromJson(json, typeStableSourceList) as List<StableSource>
-            sources.filter {
+            val filtered = sources.filter {
                 System.currentTimeMillis() - it.timestamp < 7 * 24 * 60 * 60 * 1000
             }
+            cachedStableSources = filtered
+            stableSourcesCacheKey = json
+            filtered
         } catch (e: Exception) {
             emptyList()
         }
@@ -274,6 +285,8 @@ object SP {
     fun setStableSources(sources: List<StableSource>) {
         val json = gson.toJson(sources, typeStableSourceList)
         stableSources = json
+        cachedStableSources = sources
+        stableSourcesCacheKey = json
     }
 
     fun getResolutionCache(url: String): String? {

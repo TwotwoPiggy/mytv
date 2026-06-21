@@ -305,22 +305,30 @@ class MainViewModel : ViewModel() {
             return
         }
 
-        withContext(Dispatchers.IO) { // 添加后台线程调度
+        withContext(Dispatchers.IO) {
+            // 限制并发下载数量，避免低端设备网络和内存压力
+            val semaphore = kotlinx.coroutines.sync.Semaphore(3)
             for (tvModel in listModel) {
-                var name = tvModel.tv.name
-                if (name.isEmpty()) {
-                    name = tvModel.tv.title
+                semaphore.acquire()
+                launch {
+                    try {
+                        var name = tvModel.tv.name
+                        if (name.isEmpty()) {
+                            name = tvModel.tv.title
+                        }
+                        val url = tvModel.tv.logo
+                        var urls =
+                            listOf(
+                                "https://live.fanmingming.cn/tv/$name.png"
+                            ) + getUrls("https://raw.githubusercontent.com/fanmingming/live/main/tv/$name.png")
+                        if (url.isNotEmpty()) {
+                            urls = (getUrls(url) + urls).distinct()
+                        }
+                        imageHelper.preloadImage(name, urls)
+                    } finally {
+                        semaphore.release()
+                    }
                 }
-                val url = tvModel.tv.logo
-                var urls =
-                    listOf(
-                        "https://live.fanmingming.cn/tv/$name.png"
-                    ) + getUrls("https://raw.githubusercontent.com/fanmingming/live/main/tv/$name.png")
-                if (url.isNotEmpty()) {
-                    urls = (getUrls(url) + urls).distinct()
-                }
-
-                imageHelper.preloadImage(name, urls)
             }
         }
     }
@@ -598,7 +606,6 @@ class MainViewModel : ViewModel() {
                 R.string.channel_read_error.showToast()
                 return
             }
-            //context.getString(R.string.Loading_live_source_channels).showToast()
             val isPlainText = str.trim().startsWith("#EXTM3U") ||
                     str.trim().startsWith("http://") ||
                     str.trim().startsWith("https://")
@@ -640,7 +647,7 @@ class MainViewModel : ViewModel() {
                 if (url.isNotEmpty()) {
                     com.Twotwo.TwotwoTV.SP.configUrl = url
                     val source = Source(id = id, uri = url)
-                    viewModelScope.launch(Dispatchers.Main) { // 切换到主线程更新 Sources LiveData
+                    viewModelScope.launch(Dispatchers.Main) {
                         sources.addSource(source)
                         Log.d(TAG, "tryStr2Channels: Added source: $source, SP.sources: ${source}")
                     }
@@ -673,18 +680,137 @@ class MainViewModel : ViewModel() {
 
         R.string.parsing_live_source.showToast()
 
+        val currentTvTitle = groupModel.getCurrent()?.tv?.title
+        Log.d(TAG, "str2Channels: Saving currentTvTitle=$currentTvTitle")
+
+        // 将重的解析操作移到后台线程，避免阻塞主线程
+        val parsed = kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.Default) {
+            parseChannels(str)
+        }
+
+        if (parsed == null) {
+            Log.w(TAG, "str2Channels: parsing returned null")
+            return false
+        }
+
+        val (iptvList, webviewModels, string) = parsed
+
+        if (iptvList.isEmpty() && webviewModels.isEmpty()) {
+            Log.w(TAG, "str2Channels: Parsed TV list is empty")
+            return false
+        }
+
+        // 合并 IPTV 和 WebView 频道（在主线程更新 UI 相关数据）
+        viewModelScope.launch(Dispatchers.Main) {
+            groupModel.setTVListModelList(
+                listOf(
+                    TVListModel(context.getString(R.string.my_favorites), 0),
+                    TVListModel(context.getString(R.string.all_channels), 1)
+                )
+            )
+
+            // 生成 IPTV TVModel
+            val iptvModels = iptvList.mapIndexed { index, tv ->
+                TVModel(tv.copy(id = index)).apply {
+                    setLike(SP.getLike(index))
+                    setGroupIndex(2)
+                    listIndex = index
+                }
+            }
+
+            // 合并所有 TVModel - IPTV 频道优先排在前面
+            val modelMap = mutableMapOf<String, TVModel>()
+            iptvModels.forEach { tvModel ->
+                val key = (tvModel.tv.group + tvModel.tv.name).ifEmpty { tvModel.tv.title }
+                if (!modelMap.containsKey(key)) {
+                    modelMap[key] = tvModel
+                }
+            }
+            webviewModels.forEach { tvModel ->
+                val key = (tvModel.tv.group + tvModel.tv.name).ifEmpty { tvModel.tv.title }
+                if (modelMap.containsKey(key)) {
+                    modelMap[key]?.tv?.uris = (modelMap[key]?.tv?.uris.orEmpty() + tvModel.tv.uris).distinct()
+                } else {
+                    modelMap[key] = tvModel
+                }
+            }
+            val listModelNew = modelMap.values.toList()
+
+            val groupMap = mutableMapOf<String, MutableList<TVModel>>()
+            listModelNew.forEach { tvModel ->
+                val group = tvModel.tv.group.ifEmpty { context.getString(R.string.unknown) }
+                groupMap.computeIfAbsent(group) { mutableListOf() }.add(tvModel)
+            }
+
+            groupMap.forEach { (group, tvModels) ->
+                val existingGroup = groupModel.tvGroupValue.find { it.getName() == group }
+                if (existingGroup != null) {
+                    existingGroup.setTVListModel(tvModels)
+                } else {
+                    val newGroup = TVListModel(group, groupModel.tvGroupValue.size)
+                    newGroup.setTVListModel(tvModels)
+                    groupModel.addTVListModel(newGroup)
+                }
+            }
+
+            listModel = listModelNew
+            groupModel.tvGroupValue[1].setTVListModel(listModelNew)
+
+            val currentStableSource = SP.getStableSources().firstOrNull { it.id == groupModel.getCurrent()?.tv?.id }
+            if (currentTvTitle != null) {
+                val matchingTvModel = listModelNew.firstOrNull { it.tv.title == currentTvTitle }
+                if (matchingTvModel != null) {
+                    groupModel.setCurrent(matchingTvModel)
+                    Log.d(TAG, "str2Channels: Restored groupModel.current to: ${matchingTvModel.tv.title}")
+                }
+            } else if (groupModel.getCurrent() == null || currentStableSource == null) {
+                if (listModelNew.isNotEmpty()) {
+                    groupModel.setCurrent(listModelNew[0])
+                    Log.d(TAG, "str2Channels: Set default groupModel.current to: ${listModelNew[0].tv.title}")
+                }
+            }
+
+            try {
+                val encodedString = SourceEncoder.encodeJsonSource(string)
+                if (string != cacheChannels && encodedString != cacheChannels) {
+                    // Remove initPosition
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "加密字符串失敗: ${e.message}")
+            }
+
+            viewModelScope.launch(Dispatchers.IO) { preloadLogo() }
+            Log.d(TAG, "str2Channels: Updated listModel size=${listModel.size}")
+            R.string.live_source_parsed.showToast()
+            groupModel.setChange()
+        }
+
+        return true
+    }
+
+    /**
+     * 频道解析数据类，用于在后台线程和主线程之间传递解析结果
+     */
+    private data class ParsedChannels(
+        val iptvList: List<TV>,
+        val webviewModels: List<TVModel>,
+        val rawString: String
+    )
+
+    /**
+     * 重的频道解析操作，在后台线程执行。
+     * 包括 HEX 解码、行分割、M3U 解析、WebView/IPTV 频道提取。
+     */
+    private fun parseChannels(str: String): ParsedChannels? {
         var string = str
-        val isPlainText = str.trim().startsWith("#EXTM3U") ||
-                str.trim().startsWith("http://") ||
-                str.trim().startsWith("https://")
         val isHex = str.trim().matches(Regex("^[0-9a-fA-F]+$"))
 
-        Log.d(TAG, "str2Channels: isPlainText=$isPlainText, isHex=$isHex, str length=${str.length}")
+        Log.d(TAG, "parseChannels: isHex=$isHex, str length=${str.length}")
 
         try {
             if (isHex) {
                 string = SourceDecoder.decodeHexSource(str) ?: str
-                Log.d(TAG, "str2Channels: Decoded HEX, new string length=${string.length}")
+                Log.d(TAG, "parseChannels: Decoded HEX, new string length=${string.length}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to decode string: ${e.message}")
@@ -692,11 +818,8 @@ class MainViewModel : ViewModel() {
 
         if (string.isEmpty()) {
             Log.w(TAG, "channels is empty after processing")
-            return false
+            return null
         }
-
-        val currentTvTitle = groupModel.getCurrent()?.tv?.title
-        Log.d(TAG, "str2Channels: Saving currentTvTitle=$currentTvTitle")
 
         // 分流：提取 webview:// 地址
         val lines = string.split("\n", "\r\n", "\r").filter { it.isNotBlank() }
@@ -759,7 +882,6 @@ class MainViewModel : ViewModel() {
             } else if (trimmedLine.startsWith("webview://") && currentTV != null) {
                 val url = trimmedLine.removePrefix("webview://")
                 val domain = Uri.parse(url).host ?: ""
-                // 读取 webview_loading_blacklist.json（缓存结果）
                 val blacklistMap: Map<String, List<String>> by lazy {
                     try {
                         val jsonText = context.assets.open("webview_loading_blacklist.json").bufferedReader().use { it.readText() }
@@ -769,7 +891,6 @@ class MainViewModel : ViewModel() {
                         emptyMap()
                     }
                 }
-                // 从 Global.blockMap 或 blacklistMap 获取屏蔽列表
                 val blockList = Global.blockMap[currentTV.group]
                     ?: blacklistMap.entries.find { it.key == domain || domain.endsWith(".${it.key}") }?.value
                     ?: listOf("ad.js", "banner.css")
@@ -778,7 +899,7 @@ class MainViewModel : ViewModel() {
                     block = blockList,
                     id = url.hashCode(),
                     started = "document.querySelector('.floatNav').style.display = 'none'",
-                    script = "", // 移除脚本设置，依赖 WebFragment 的 scriptMap
+                    script = "",
                     selector = "",
                     finished = ""
                 )
@@ -794,8 +915,7 @@ class MainViewModel : ViewModel() {
         val webviewModels = mutableListOf<TVModel>()
         if (webviewTVs.isNotEmpty()) {
             try {
-                Log.d(TAG, "str2Channels: Found ${webviewTVs.size} WebView channels")
-                // 按 group + name 去重 WebView 频道
+                Log.d(TAG, "parseChannels: Found ${webviewTVs.size} WebView channels")
                 val webviewMap = mutableMapOf<String, MutableList<com.horsenma.mytv1.data.TV>>()
                 for (tv in webviewTVs) {
                     val key = (tv.group.orEmpty() + tv.name.orEmpty()).ifEmpty { tv.title.orEmpty() }
@@ -817,12 +937,12 @@ class MainViewModel : ViewModel() {
                             selector = tvs[0].selector.orEmpty(),
                             started = tvs[0].started.orEmpty(),
                             finished = tvs[0].finished.orEmpty(),
-                            headers = emptyMap(), // 避免 headers 类型不匹配
+                            headers = emptyMap(),
                             description = null,
                             image = null,
                             videoIndex = 0,
                             sourceType = SourceType.UNKNOWN,
-                            number = -1, // 统一设置为 -1，与原逻辑一致
+                            number = -1,
                             child = emptyList()
                         )
                     ).apply {
@@ -831,7 +951,7 @@ class MainViewModel : ViewModel() {
                         listIndex = index
                     }
                 })
-                Log.d(TAG, "str2Channels: Parsed ${webviewModels.size} WebView channels")
+                Log.d(TAG, "parseChannels: Parsed ${webviewModels.size} WebView channels")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse WebView channels: ${e.message}")
             }
@@ -859,7 +979,7 @@ class MainViewModel : ViewModel() {
                         if (trimmedLine.startsWith("#EXTM3U")) {
                             continue
                         } else if (trimmedLine.startsWith("#EXTINF")) {
-                            var lastKey: String? = null // 跟踪上一个频道的 key
+                            var lastKey: String? = null
                             if (currentTV != null && currentTV.uris.isNotEmpty()) {
                                 val key = (currentTV.group + currentTV.name).ifEmpty { currentTV.title }
                                 if (key != lastKey) {
@@ -932,7 +1052,7 @@ class MainViewModel : ViewModel() {
                         }
                     }
 
-                    var lastKey: String? = null // 跟踪上一个频道的 key
+                    var lastKey: String? = null
                     if (currentTV != null && currentTV.uris.isNotEmpty()) {
                         val key = (currentTV.group + currentTV.name).ifEmpty { currentTV.title }
                         if (key != lastKey) {
@@ -969,102 +1089,7 @@ class MainViewModel : ViewModel() {
             emptyList()
         }
 
-        if (iptvList.isEmpty() && webviewModels.isEmpty()) {
-            Log.w(TAG, "str2Channels: Parsed TV list is empty")
-            return false
-        }
-
-        // 合并 IPTV 和 WebView 频道
-        viewModelScope.launch(Dispatchers.Main) {
-            groupModel.setTVListModelList(
-                listOf(
-                    TVListModel(context.getString(R.string.my_favorites), 0),
-                    TVListModel(context.getString(R.string.all_channels), 1)
-                )
-            )
-
-            // 生成 IPTV TVModel
-            val iptvModels = iptvList.mapIndexed { index, tv ->
-                TVModel(tv.copy(id = index)).apply {
-                    setLike(SP.getLike(index))
-                    setGroupIndex(2)
-                    listIndex = index
-                }
-            }
-
-            // 合并所有 TVModel - IPTV 频道优先排在前面
-            val modelMap = mutableMapOf<String, TVModel>()
-            // 先添加 IPTV 频道（确保它们在列表前面）
-            iptvModels.forEach { tvModel ->
-                val key = (tvModel.tv.group + tvModel.tv.name).ifEmpty { tvModel.tv.title }
-                if (!modelMap.containsKey(key)) {
-                    modelMap[key] = tvModel
-                }
-            }
-            // 再添加 WebView 频道（只添加不在 IPTV 中的）
-            webviewModels.forEach { tvModel ->
-                val key = (tvModel.tv.group + tvModel.tv.name).ifEmpty { tvModel.tv.title }
-                if (modelMap.containsKey(key)) {
-                    // 合并 URI
-                    modelMap[key]?.tv?.uris = (modelMap[key]?.tv?.uris.orEmpty() + tvModel.tv.uris).distinct()
-                } else {
-                    modelMap[key] = tvModel
-                }
-            }
-            val listModelNew = modelMap.values.toList()
-
-            val groupMap = mutableMapOf<String, MutableList<TVModel>>()
-            listModelNew.forEach { tvModel ->
-                val group = tvModel.tv.group.ifEmpty { context.getString(R.string.unknown) }
-                groupMap.computeIfAbsent(group) { mutableListOf() }.add(tvModel)
-            }
-
-            groupMap.forEach { (group, tvModels) ->
-                val existingGroup = groupModel.tvGroupValue.find { it.getName() == group }
-                if (existingGroup != null) {
-                    existingGroup.setTVListModel(tvModels)
-                } else {
-                    val newGroup = TVListModel(group, groupModel.tvGroupValue.size)
-                    newGroup.setTVListModel(tvModels)
-                    groupModel.addTVListModel(newGroup)
-                }
-            }
-
-            listModel = listModelNew
-            groupModel.tvGroupValue[1].setTVListModel(listModelNew)
-
-            // 仅当当前无有效 groupModel.current 或非稳定源时，恢复或设置默认
-            val currentStableSource = SP.getStableSources().firstOrNull { it.id == groupModel.getCurrent()?.tv?.id }
-            if (currentTvTitle != null) {
-                val matchingTvModel = listModelNew.firstOrNull { it.tv.title == currentTvTitle }
-                if (matchingTvModel != null) {
-                    groupModel.setCurrent(matchingTvModel)
-                    Log.d(TAG, "str2Channels: Restored groupModel.current to: ${matchingTvModel.tv.title}")
-                }
-            } else if (groupModel.getCurrent() == null || currentStableSource == null) {
-                // 仅当无稳定源时设置默认频道
-                if (listModelNew.isNotEmpty()) {
-                    groupModel.setCurrent(listModelNew[0])
-                    Log.d(TAG, "str2Channels: Set default groupModel.current to: ${listModelNew[0].tv.title}")
-                }
-            }
-
-            try {
-                val encodedString = SourceEncoder.encodeJsonSource(string)
-                if (string != cacheChannels && encodedString != cacheChannels) {
-                    // Remove initPosition
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "加密字符串失敗: ${e.message}")
-            }
-
-            viewModelScope.launch(Dispatchers.IO) { preloadLogo() }
-            Log.d(TAG, "str2Channels: Updated listModel size=${listModel.size}")
-            R.string.live_source_parsed.showToast()
-            groupModel.setChange()
-        }
-
-        return true
+        return ParsedChannels(iptvList, webviewModels, string)
     }
 
     fun clearCacheChannels() {

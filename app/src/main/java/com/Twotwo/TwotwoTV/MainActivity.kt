@@ -144,38 +144,38 @@ class MainActivity : AppCompatActivity() {
         val versionCode = packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
         updateManager = UpdateManager(this, versionCode)
 
-        // 初始化所有 Fragment
+        // 初始化 Fragment：立即添加关键 Fragment，延迟添加非关键 Fragment
         if (savedInstanceState == null) {
             try {
+                // 立即添加播放相关 Fragment
                 supportFragmentManager.beginTransaction()
                     .add(R.id.main_browse_fragment, loadingFragment)
                     .add(R.id.main_browse_fragment, playerFragment)
-                    .add(R.id.main_browse_fragment, infoFragment)
-                    .add(R.id.main_browse_fragment, channelFragment)
-                    .add(R.id.main_browse_fragment, menuFragment)
-                    .add(R.id.main_browse_fragment, settingFragment)
-                    .add(R.id.main_browse_fragment, sourceSelectFragment)
-                    .hide(infoFragment)
-                    .hide(channelFragment)
-                    .hide(menuFragment)
-                    .hide(settingFragment)
-                    .hide(sourceSelectFragment)
                     .commitNow()
+                // 延迟添加其余 Fragment，避免阻塞首帧渲染
+                window.decorView.post {
+                    try {
+                        supportFragmentManager.beginTransaction()
+                            .add(R.id.main_browse_fragment, infoFragment)
+                            .add(R.id.main_browse_fragment, channelFragment)
+                            .add(R.id.main_browse_fragment, menuFragment)
+                            .add(R.id.main_browse_fragment, settingFragment)
+                            .add(R.id.main_browse_fragment, sourceSelectFragment)
+                            .hide(infoFragment)
+                            .hide(channelFragment)
+                            .hide(menuFragment)
+                            .hide(settingFragment)
+                            .hide(sourceSelectFragment)
+                            .commit()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to add deferred fragments: ${e.message}")
+                    }
+                }
             } catch (e: IllegalStateException) {
                 Log.e(TAG, "Failed to add fragments: ${e.message}")
                 supportFragmentManager.beginTransaction()
                     .add(R.id.main_browse_fragment, loadingFragment)
                     .add(R.id.main_browse_fragment, playerFragment)
-                    .add(R.id.main_browse_fragment, infoFragment)
-                    .add(R.id.main_browse_fragment, channelFragment)
-                    .add(R.id.main_browse_fragment, menuFragment)
-                    .add(R.id.main_browse_fragment, settingFragment)
-                    .add(R.id.main_browse_fragment, sourceSelectFragment)
-                    .hide(infoFragment)
-                    .hide(channelFragment)
-                    .hide(menuFragment)
-                    .hide(settingFragment)
-                    .hide(sourceSelectFragment)
                     .commit()
             }
         }

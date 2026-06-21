@@ -16,14 +16,15 @@ class ImageHelper(private val context: Context) {
     private val cacheDir = context.cacheDir
 
     private var dir: File = File(cacheDir, LOGO)
-    private val files = ConcurrentHashMap<String, File>()
-
-    init {
-        if (!dir.exists()) {
-            dir.mkdir()
-        }
-        dir.listFiles()?.forEach { file ->
-            files[file.name] = file
+    // 延迟加载文件列表，避免阻塞 Application 启动
+    private val files by lazy {
+        ConcurrentHashMap<String, File>().also { map ->
+            if (!dir.exists()) {
+                dir.mkdir()
+            }
+            dir.listFiles()?.forEach { file ->
+                map[file.name] = file
+            }
         }
     }
 

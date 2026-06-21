@@ -66,8 +66,8 @@
     <string name="external_storage_unavailable">外部存儲不可用，請檢查存儲狀態</string>
     <string name="is_downloading">正在下載...</string>
     <string name="switching_live_source">正在切換直播源</string>
-    <string name="project_github_address">https://github.com/horsemail/twotwotv</string>
-    <string name="project_address">項目地址：https://github.com/horsemail/twotwotv</string>
+    <string name="project_github_address">https://github.com/TwotwoPiggy/mytv</string>
+    <string name="project_address">項目地址：https://github.com/TwotwoPiggy/mytv</string>
     <string name="update">更新</string>
     <string name="change_source">換源</string>
     <string name="wonderful_program">精彩節目</string>

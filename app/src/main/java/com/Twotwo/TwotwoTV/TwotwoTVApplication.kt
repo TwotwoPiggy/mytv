@@ -47,8 +47,11 @@ class TwotwoTVApplication : Application() {
         super.onCreate()
         instance = this
         SP.init(this) // 确保在任何 SP 属性访问之前初始化
-        Security.removeProvider("BC")
-        Security.addProvider(BouncyCastleProvider())
+        // BouncyCastle 初始化移到后台线程，避免阻塞启动
+        Thread {
+            Security.removeProvider("BC")
+            Security.addProvider(BouncyCastleProvider())
+        }.start()
 
         displayMetrics = DisplayMetrics()
         realDisplayMetrics = DisplayMetrics()
@@ -185,6 +188,21 @@ class TwotwoTVApplication : Application() {
             super.attachBaseContext(base)
         } catch (_: Exception) {
             super.attachBaseContext(base)
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            try {
+                com.bumptech.glide.Glide.get(this).clearMemory()
+                if (::imageHelper.isInitialized) {
+                    imageHelper.clearImage()
+                }
+                Log.d(TAG, "Cleared image caches on memory pressure (level=$level)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to clear caches on trim memory: ${e.message}")
+            }
         }
     }
 }

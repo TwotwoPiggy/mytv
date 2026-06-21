@@ -53,6 +53,8 @@ class WebFragment : Fragment(), WebFragmentCallback {
     private var finished = 0
     private var callback: WebFragmentCallback? = null
     internal var isPlaying = false
+    // JS 脚本缓存，避免每次 onPageFinished 都从 raw 资源读取
+    private val scriptCache = mutableMapOf<Int, String>()
     private var playbackStartTime = 0L
     private var lastErrorTime = 0L
     private val errorSuppressionWindow = 2_000L // 2秒窗口
@@ -363,9 +365,11 @@ class WebFragment : Fragment(), WebFragmentCallback {
                             if (script == null) {
                                 script = R.raw.ahtv1
                             }
-                            var s = requireContext().resources.openRawResource(script)
-                                .bufferedReader()
-                                .use { it.readText() }
+                            var s = scriptCache.getOrPut(script) {
+                                requireContext().resources.openRawResource(script)
+                                    .bufferedReader()
+                                    .use { it.readText() }
+                            }
                             // 替换 object-fit 和 body.style.left
                             s = s.replace(
                                 "video.style.objectFit = 'contain';",
@@ -427,6 +431,7 @@ class WebFragment : Fragment(), WebFragmentCallback {
                         javaScriptCanOpenWindowsAutomatically = true
                         mediaPlaybackRequiresUserGesture = false
                         mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                        cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
                         userAgentString =
                             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
                     }
@@ -721,6 +726,31 @@ class WebFragment : Fragment(), WebFragmentCallback {
         finished = 0
         if (this.tvModel != tvModel) {
             stopPlayback()
+            // 切换频道时强制清理 WebView，防止电视端旧页面缓存残留
+            when (webView) {
+                is X5WebView -> {
+                    val wv = webView as X5WebView
+                    wv.stopLoading()
+                    wv.clearCache(true)
+                    wv.clearHistory()
+                    wv.loadUrl("about:blank")
+                }
+                is AndroidWebView -> {
+                    val wv = webView as AndroidWebView
+                    wv.stopLoading()
+                    wv.clearCache(true)
+                    wv.clearHistory()
+                    wv.loadUrl("about:blank")
+                }
+            }
+            // 清理 WebStorage 和 Cookie
+            try {
+                android.webkit.WebStorage.getInstance().deleteAllData()
+                android.webkit.CookieManager.getInstance().removeAllCookies(null)
+                android.webkit.CookieManager.getInstance().flush()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to clear web storage: ${e.message}")
+            }
         }
         this.tvModel = tvModel
         val url = tvModel.videoUrl.value as String

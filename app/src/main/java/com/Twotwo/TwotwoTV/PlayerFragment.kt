@@ -586,7 +586,7 @@ class PlayerFragment : Fragment(), ExoPlayerCallback {
                         try {
                             childFragmentManager.beginTransaction()
                                 .remove(webFragment)
-                                .commit()
+                                .commitNowAllowingStateLoss()
                             Log.d(TAG, "Removed WebFragment for ${tvModel.tv.title}")
                         } catch (e: IllegalStateException) {
                             Log.e(TAG, "Failed to remove WebFragment: ${e.message}", e)

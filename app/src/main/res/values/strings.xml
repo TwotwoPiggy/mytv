@@ -67,8 +67,8 @@
     <string name="external_storage_unavailable">External storage unavailable, check status</string>
     <string name="is_downloading">Downloading...</string>
     <string name="switching_live_source">Switching live source</string>
-    <string name="project_github_address">https://github.com/horsemail/twotwotv</string>
-    <string name="project_address">Project: https://github.com/horsemail/twotwotv</string>
+    <string name="project_github_address">https://github.com/TwotwoPiggy/mytv</string>
+    <string name="project_address">Project: https://github.com/TwotwoPiggy/mytv</string>
     <string name="update">Update</string>
     <string name="change_source">CGSR</string>
     <string name="wonderful_program">Wonderful program</string>
