@@ -16,6 +16,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.Toast
 import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.horsenma.yourtv.databinding.PlayerBinding
@@ -431,6 +432,15 @@ class PlayerFragment : Fragment(), ExoPlayerCallback {
      */
     fun isPlayerActive(): Boolean {
         return exoPlayerEngine.isPlaying()
+    }
+
+    @OptIn(UnstableApi::class)
+    fun getCurrentResolution(): String? {
+        return exoPlayerEngine.getCurrentResolution()
+    }
+
+    fun ensurePlaying() {
+        exoPlayerEngine.ensurePlaying()
     }
 
     @OptIn(UnstableApi::class)
