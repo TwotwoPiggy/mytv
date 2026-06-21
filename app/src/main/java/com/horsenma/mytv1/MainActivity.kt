@@ -91,11 +91,6 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         SP.init(this)
 
-        // 强制重置 TVList 状态
-        TVList.reset()
-        TVList.reloadData(this)
-        Log.d(TAG, "TVList initialized in onCreate")
-
         updateFullScreenMode(com.Twotwo.TwotwoTV.SP.fullScreenMode) // 初始化全屏模式
         Log.d(TAG, "com.Twotwo.TwotwoTV.SP.fullScreenMode = ${com.Twotwo.TwotwoTV.SP.fullScreenMode}")
 
@@ -120,6 +115,13 @@ class MainActivity : FragmentActivity() {
         }
 
         gestureDetector = GestureDetector(this, GestureListener(this))
+
+        // 在后台线程初始化 TVList，避免 ANR
+        lifecycleScope.launch(Dispatchers.IO) {
+            TVList.reset()
+            TVList.reloadData(this@MainActivity)
+            Log.d(TAG, "TVList initialized in background")
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.P)

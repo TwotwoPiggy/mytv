@@ -50,7 +50,7 @@ object SP {
     private var DEFAULT_SOFT_DECODE: Boolean = false
     internal var DEFAULT_FULL_SCREEN_MODE: Boolean = true
 
-    const val DEFAULT_ENABLE_WEBVIEW_TYPE = false
+    const val DEFAULT_ENABLE_WEBVIEW_TYPE = true
     const val DEFAULT_ENABLE_SCREEN_OFF_AUDIO = true
     const val DEFAULT_SHOW_SOURCE_BUTTON = true
     const val DEFAULT_AUTO_SWITCH_SOURCE = false
