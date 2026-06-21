@@ -984,11 +984,13 @@ class MainViewModel : ViewModel() {
             )
 
             // 生成 IPTV TVModel
+            // IPTV 频道排在 WebView 频道前面，所以 listIndex 从 webviewModels.size 开始
+            val iptvOffset = webviewModels.size
             val iptvModels = iptvList.mapIndexed { index, tv ->
                 TVModel(tv.copy(id = index)).apply {
                     setLike(SP.getLike(index))
                     setGroupIndex(2)
-                    listIndex = index
+                    listIndex = iptvOffset + index
                 }
             }
 
