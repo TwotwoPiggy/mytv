@@ -77,4 +77,34 @@
         android:layout_marginBottom="10dp"
         android:layout_marginEnd="0dp" />
 
+    <!-- 左侧频道列表按钮 (触屏设备显示) -->
+    <Button
+        android:id="@+id/btn_channel_list"
+        android:layout_width="40dp"
+        android:layout_height="120dp"
+        android:text="◀"
+        android:textSize="20sp"
+        android:textColor="#88FFFFFF"
+        android:background="#44000000"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="0dp" />
+
+    <!-- 右侧换源列表按钮 (触屏设备显示) -->
+    <Button
+        android:id="@+id/btn_source_list"
+        android:layout_width="40dp"
+        android:layout_height="120dp"
+        android:text="▶"
+        android:textSize="20sp"
+        android:textColor="#88FFFFFF"
+        android:background="#44000000"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="0dp" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

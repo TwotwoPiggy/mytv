@@ -186,6 +186,54 @@ class PlayerFragment : Fragment(), ExoPlayerCallback {
             }
         }
 
+        // 初始化触屏设备的频道列表和换源列表按钮
+        initTouchScreenButtons(view)
+    }
+
+    /**
+     * 初始化触屏设备的左右侧按钮
+     */
+    private fun initTouchScreenButtons(view: View) {
+        if (!isTouchScreenDevice()) return
+
+        // 左侧频道列表按钮
+        val btnChannelList = view.findViewById<Button>(R.id.btn_channel_list)
+        btnChannelList?.let {
+            it.visibility = View.VISIBLE
+            it.setOnClickListener {
+                val mainActivity = activity as? MainActivity
+                mainActivity?.let { ma ->
+                    // 切换频道列表显示
+                    if (ma.channelFragment.isAdded && !ma.channelFragment.isHidden) {
+                        // 已显示，隐藏
+                        ma.supportFragmentManager.beginTransaction()
+                            .hide(ma.channelFragment)
+                            .commitNow()
+                    } else {
+                        // 显示频道列表
+                        ma.supportFragmentManager.beginTransaction()
+                            .show(ma.channelFragment)
+                            .commitNow()
+                        val currentModel = ma.viewModel.groupModel.getCurrent()
+                        if (currentModel != null) {
+                            ma.channelFragment.show(currentModel)
+                        }
+                    }
+                }
+                Log.d(TAG, "btn_channel_list clicked, toggling channel list")
+            }
+        }
+
+        // 右侧换源列表按钮
+        val btnSourceList = view.findViewById<Button>(R.id.btn_source_list)
+        btnSourceList?.let {
+            it.visibility = View.VISIBLE
+            it.setOnClickListener {
+                val mainActivity = activity as? MainActivity
+                mainActivity?.showSourceList()
+                Log.d(TAG, "btn_source_list clicked, showing source list")
+            }
+        }
     }
 
     // 控制 btn_source 可见性
@@ -203,6 +251,15 @@ class PlayerFragment : Fragment(), ExoPlayerCallback {
         btnSource.isEnabled = shouldShow
         btnSource.isFocusableInTouchMode = shouldShow // 确保触摸交互
         isSourceButtonVisible = shouldShow
+
+        // 触屏设备显示频道列表和换源列表按钮
+        if (isTouchScreenDevice()) {
+            val btnChannelList = binding.root.findViewById<Button>(R.id.btn_channel_list)
+            val btnSourceList = binding.root.findViewById<Button>(R.id.btn_source_list)
+            btnChannelList?.visibility = if (shouldShow) View.VISIBLE else View.GONE
+            btnSourceList?.visibility = if (shouldShow) View.VISIBLE else View.GONE
+        }
+
         Log.d(TAG, "setSourceButtonVisibility: visible=$visible, shouldShow=$shouldShow, showSourceButton=${SP.showSourceButton}, btnSource.focusable=${btnSource.isFocusable}")
     }
 
