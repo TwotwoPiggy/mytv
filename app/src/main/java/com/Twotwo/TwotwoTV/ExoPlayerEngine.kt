@@ -413,10 +413,12 @@ class ExoPlayerEngine {
                 lastStopTime = System.currentTimeMillis()
                 callback?.onPlaybackError(error.message ?: "Unknown error")
 
+                // Update lastSwitchTime to prevent immediate retry, but keep lastStopTime
+                // so checkPlaybackRunnable can recover after cooldown
                 if (System.currentTimeMillis() - lastSwitchTime >= retryCooldown) {
-                    Log.w(TAG, "${model.tv.title} error, retrying immediately")
+                    Log.w(TAG, "${model.tv.title} error, will retry after cooldown")
                     lastSwitchTime = System.currentTimeMillis()
-                    lastStopTime = 0L
+                    // Don't reset lastStopTime - let checkPlaybackRunnable handle recovery
                 }
             }
         })

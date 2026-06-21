@@ -719,6 +719,12 @@ class MainActivity : AppCompatActivity() {
                 viewModel.groupModel.getPrev()
             }
 
+        // Immediately clear error state and show player (bypass throttle)
+        if (errorFragment.isAdded && !errorFragment.isHidden) {
+            hideFragment(errorFragment)
+            showFragment(playerFragment)
+        }
+
         tvModel?.setReady()
         viewModel.groupModel.setPositionPlaying()
         viewModel.groupModel.getCurrentList()?.setPositionPlaying()
@@ -738,6 +744,12 @@ class MainActivity : AppCompatActivity() {
             } else {
                 viewModel.groupModel.getNext()
             }
+
+        // Immediately clear error state and show player (bypass throttle)
+        if (errorFragment.isAdded && !errorFragment.isHidden) {
+            hideFragment(errorFragment)
+            showFragment(playerFragment)
+        }
 
         tvModel?.setReady()
         viewModel.groupModel.setPositionPlaying()
@@ -791,6 +803,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
         lastSourceUpTime = currentTime
+
+        // Immediately clear error state and show player (bypass throttle)
+        if (errorFragment.isAdded && !errorFragment.isHidden) {
+            hideFragment(errorFragment)
+            showFragment(playerFragment)
+        }
 
         var tvModel = viewModel.groupModel.getCurrent()
         if (tvModel == null) {
