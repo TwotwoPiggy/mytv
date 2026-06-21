@@ -1258,16 +1258,16 @@ class MainActivity : AppCompatActivity() {
                     channelFragment.playNow()
                     return true
                 }
-                // 新增：处理连续按确认键逻辑
+                // 处理连续按确认键逻辑
                 val currentTime = System.currentTimeMillis()
                 val timeSinceLastPress = currentTime - lastMenuPressTime
 
-                if (timeSinceLastPress <= 400) { // 400ms 内连续按
+                if (timeSinceLastPress <= 600) { // 600ms 内连续按
                     menuPressCount++
-                    if (menuPressCount >= 4) { // 连续按4次，显示 settingFragment
+                    if (menuPressCount >= 2) { // 连续按2次，显示 sourceSelectFragment
                         showFragment(sourceSelectFragment)
                         menuPressCount = 0
-                        handler.removeCallbacks(handleEnterRunnable) // 取消可能的 menuFragment 显示
+                        handler.removeCallbacks(handleEnterRunnable)
                         return true
                     }
                 } else {

@@ -116,15 +116,22 @@ class SourceSelectFragment : Fragment() {
                     }
                     KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
                         scheduleAutoHide()
-                        false
+                        true // 消费事件，防止穿透
                     }
                     KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
-                        scheduleAutoHide() // 重置自动隐藏计时
+                        scheduleAutoHide()
+                        // 让 RecyclerView 处理焦点导航
                         false
                     }
                     KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_DPAD_CENTER -> {
-                        val currentPosition = (sourceRecyclerView.layoutManager as LinearLayoutManager)
-                            .findFirstCompletelyVisibleItemPosition()
+                        // 获取当前聚焦的 item 位置
+                        val focusedView = sourceRecyclerView.focusedChild
+                        val currentPosition = if (focusedView != null) {
+                            sourceRecyclerView.getChildAdapterPosition(focusedView)
+                        } else {
+                            (sourceRecyclerView.layoutManager as LinearLayoutManager)
+                                .findFirstCompletelyVisibleItemPosition()
+                        }
                         if (currentPosition >= 0) {
                             onSourceSelected(currentPosition, true)
                         }

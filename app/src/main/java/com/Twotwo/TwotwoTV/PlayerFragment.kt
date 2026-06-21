@@ -228,14 +228,15 @@ class PlayerFragment : Fragment(), ExoPlayerCallback {
         val shouldShow = if (!visible) {
             false // 画中画模式下始终隐藏
         } else {
-            isTouchScreenDevice() && SP.showSourceButton
+            // 所有设备都显示换源按钮（触屏用点击，遥控器用长按）
+            SP.showSourceButton
         }
         btnSource.visibility = if (shouldShow) View.VISIBLE else View.GONE
         btnSource.isFocusable = shouldShow
         btnSource.isEnabled = shouldShow
         btnSource.isFocusableInTouchMode = shouldShow // 确保触摸交互
         isSourceButtonVisible = shouldShow
-        Log.d(TAG, "setSourceButtonVisibility: visible=$visible, shouldShow=$shouldShow, isTouchScreen=${isTouchScreenDevice()}, showSourceButton=${SP.showSourceButton}, btnSource.focusable=${btnSource.isFocusable}")
+        Log.d(TAG, "setSourceButtonVisibility: visible=$visible, shouldShow=$shouldShow, showSourceButton=${SP.showSourceButton}, btnSource.focusable=${btnSource.isFocusable}")
     }
 
     // -- ExoPlayerCallback implementation --
