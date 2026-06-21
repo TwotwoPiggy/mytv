@@ -10,11 +10,11 @@ import androidx.core.view.marginBottom
 import androidx.core.view.marginStart
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.horsenma.yourtv.databinding.GroupItemBinding
+import com.Twotwo.TwotwoTV.databinding.GroupItemBinding
 import com.horsenma.mytv1.models.TVGroupModel
 import com.horsenma.mytv1.models.TVListModel
-import com.horsenma.yourtv.YourTVApplication
-import com.horsenma.yourtv.R
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
+import com.Twotwo.TwotwoTV.R
 
 class GroupAdapter(
     private val context: Context,
@@ -30,7 +30,7 @@ class GroupAdapter(
 
     var visiable = false
 
-    val application = context.applicationContext as YourTVApplication
+    val application = context.applicationContext as TwotwoTVApplication
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val inflater = LayoutInflater.from(context)

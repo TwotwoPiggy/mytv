@@ -1,7 +1,7 @@
 {
-  "version_code": 20402,
-  "version_name": "2.4.2",
-  "apk_url": "https://github.com/horsemail/yourtv/releases/download/v2.4.2/yourtv_v2.4.2.apk",
-  "apk_name": "yourtv_v2.4.2.apk",
-  "description": "EPG節目清單為空時不顯示EPG窗口\n刪除錯誤的授權失效提示信息顯示"
+  "version_code": 1,
+  "version_name": "0.0.1",
+  "apk_url": "https://github.com/horsemail/twotwotv/releases/download/v0.0.1/twotwotv_v0.0.1.apk",
+  "apk_name": "twotwotv_v0.0.1.apk",
+  "description": "TwotwoTV - 纯净直播播放器"
 }

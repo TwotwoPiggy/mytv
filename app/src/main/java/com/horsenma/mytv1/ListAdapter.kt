@@ -15,15 +15,15 @@ import android.view.ViewGroup.FOCUS_BEFORE_DESCENDANTS
 import android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
-import com.horsenma.yourtv.YourTVApplication
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
 import androidx.core.view.setPadding
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.horsenma.yourtv.databinding.ListItemBinding
+import com.Twotwo.TwotwoTV.databinding.ListItemBinding
 import com.horsenma.mytv1.models.TVListModel
 import com.horsenma.mytv1.models.TVModel
-import com.horsenma.yourtv.R
+import com.Twotwo.TwotwoTV.R
 
 class ListAdapter(
     private val context: Context,
@@ -38,7 +38,7 @@ class ListAdapter(
 
     var visiable = false
 
-    val application = context.applicationContext as YourTVApplication
+    val application = context.applicationContext as TwotwoTVApplication
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val inflater = LayoutInflater.from(context)

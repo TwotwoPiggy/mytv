@@ -12,7 +12,7 @@ import android.view.WindowManager
 import androidx.fragment.app.DialogFragment
 import com.bumptech.glide.Glide
 import com.horsenma.mytv1.Utils.getDateTimestamp
-import com.horsenma.yourtv.databinding.ModalBinding
+import com.Twotwo.TwotwoTV.databinding.ModalBinding
 
 
 class ModalFragment : DialogFragment() {

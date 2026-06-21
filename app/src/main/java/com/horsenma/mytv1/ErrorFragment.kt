@@ -6,8 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.marginTop
 import androidx.fragment.app.Fragment
-import com.horsenma.yourtv.databinding.ErrorBinding
-import com.horsenma.yourtv.YourTVApplication
+import com.Twotwo.TwotwoTV.databinding.ErrorBinding
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
 
 class ErrorFragment : Fragment() {
     private var _binding: ErrorBinding? = null
@@ -19,7 +19,7 @@ class ErrorFragment : Fragment() {
     ): View {
         _binding = ErrorBinding.inflate(inflater, container, false)
 
-        val application = requireActivity().applicationContext as YourTVApplication
+        val application = requireActivity().applicationContext as TwotwoTVApplication
 
         binding.logo.layoutParams.width = application.px2Px(binding.logo.layoutParams.width)
         binding.logo.layoutParams.height = application.px2Px(binding.logo.layoutParams.height)

@@ -16,7 +16,7 @@ import fi.iki.elonen.NanoHTTPD
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
-import com.horsenma.yourtv.R
+import com.Twotwo.TwotwoTV.R
 
 class SimpleServer(private val context: Context) : NanoHTTPD(PORT) {
     private val handler = Handler(Looper.getMainLooper())

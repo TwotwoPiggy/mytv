@@ -8,9 +8,9 @@ import android.view.ViewGroup
 import androidx.core.view.marginEnd
 import androidx.core.view.marginTop
 import androidx.fragment.app.Fragment
-import com.horsenma.yourtv.databinding.ChannelBinding
+import com.Twotwo.TwotwoTV.databinding.ChannelBinding
 import com.horsenma.mytv1.models.TVModel
-import com.horsenma.yourtv.YourTVApplication
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
 
 
 class ChannelFragment : Fragment() {
@@ -28,7 +28,7 @@ class ChannelFragment : Fragment() {
         _binding = ChannelBinding.inflate(inflater, container, false)
         _binding!!.root.visibility = View.GONE
 
-        val application = requireActivity().applicationContext as YourTVApplication
+        val application = requireActivity().applicationContext as TwotwoTVApplication
 
         binding.channel.layoutParams.width = application.px2Px(binding.channel.layoutParams.width)
         binding.channel.layoutParams.height = application.px2Px(binding.channel.layoutParams.height)

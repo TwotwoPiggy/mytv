@@ -5,8 +5,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.horsenma.yourtv.databinding.LoadingBinding
-import com.horsenma.yourtv.YourTVApplication
+import com.Twotwo.TwotwoTV.databinding.LoadingBinding
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
 
 
 class LoadingFragment : Fragment() {
@@ -19,7 +19,7 @@ class LoadingFragment : Fragment() {
     ): View {
         _binding = LoadingBinding.inflate(inflater, container, false)
 
-        val application = requireActivity().applicationContext as YourTVApplication
+        val application = requireActivity().applicationContext as TwotwoTVApplication
 
         binding.bar.layoutParams.width = application.px2Px(binding.bar.layoutParams.width)
         binding.bar.layoutParams.height = application.px2Px(binding.bar.layoutParams.height)

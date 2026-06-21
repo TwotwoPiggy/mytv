@@ -28,9 +28,9 @@ import com.tencent.smtt.export.external.interfaces.SslErrorHandler as X5SslError
 import com.tencent.smtt.export.external.interfaces.WebResourceRequest as X5WebResourceRequest
 import com.tencent.smtt.export.external.interfaces.WebResourceResponse as X5WebResourceResponse
 import com.tencent.smtt.export.external.interfaces.ConsoleMessage as X5ConsoleMessage
-import com.horsenma.yourtv.R
-import com.horsenma.yourtv.PlayerFragment
-import com.horsenma.yourtv.YourTVApplication
+import com.Twotwo.TwotwoTV.R
+import com.Twotwo.TwotwoTV.PlayerFragment
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
 import java.io.ByteArrayInputStream
 import androidx.core.graphics.createBitmap
 import android.widget.FrameLayout
@@ -48,8 +48,8 @@ class WebFragment : Fragment(), WebFragmentCallback {
     private val delayHideVolume = 2 * 1000L
     private lateinit var icon: AppCompatImageView
     private lateinit var volume: ProgressBar
-    private val scriptMap get() = com.horsenma.yourtv.data.Global.scriptMap
-    private val blockMap get() = com.horsenma.yourtv.data.Global.blockMap
+    private val scriptMap get() = com.Twotwo.TwotwoTV.data.Global.scriptMap
+    private val blockMap get() = com.Twotwo.TwotwoTV.data.Global.blockMap
     private var finished = 0
     private var callback: WebFragmentCallback? = null
     internal var isPlaying = false
@@ -67,7 +67,7 @@ class WebFragment : Fragment(), WebFragmentCallback {
         Log.d(TAG, "onActivityCreated called")
         // 动态调用 ready
         when (activity) {
-            is com.horsenma.yourtv.MainActivity -> (activity as com.horsenma.yourtv.MainActivity).ready()
+            is com.Twotwo.TwotwoTV.MainActivity -> (activity as com.Twotwo.TwotwoTV.MainActivity).ready()
             is com.horsenma.mytv1.MainActivity -> (activity as com.horsenma.mytv1.MainActivity).ready(TAG)
             else -> Log.w(TAG, "Activity not supported for ready call")
         }
@@ -89,8 +89,8 @@ class WebFragment : Fragment(), WebFragmentCallback {
 
         // 动态调整WebView布局
         fun updateWebViewLayout() {
-            val application = requireActivity().applicationContext as YourTVApplication
-            val isFullScreen = com.horsenma.yourtv.SP.fullScreenMode
+            val application = requireActivity().applicationContext as com.Twotwo.TwotwoTV.TwotwoTVApplication
+            val isFullScreen = com.Twotwo.TwotwoTV.SP.fullScreenMode
             webView?.layoutParams = FrameLayout.LayoutParams(
                 if (isFullScreen) ViewGroup.LayoutParams.MATCH_PARENT else application.videoWidthPx(),
                 if (isFullScreen) ViewGroup.LayoutParams.MATCH_PARENT else application.videoHeightPx()
@@ -107,7 +107,7 @@ class WebFragment : Fragment(), WebFragmentCallback {
         updateWebViewLayout()
 
         // 监听全屏模式变化
-        YourTVApplication.getInstance().setFullScreenModeListener {
+        TwotwoTVApplication.getInstance().setFullScreenModeListener {
             Log.d(TAG, "Full screen mode changed via listener")
             updateWebViewLayout()
         }
@@ -143,10 +143,10 @@ class WebFragment : Fragment(), WebFragmentCallback {
         root.addView(volume)
 
         // 动态创建 WebView
-        val application = requireActivity().applicationContext as YourTVApplication
+        val application = requireActivity().applicationContext as com.Twotwo.TwotwoTV.TwotwoTVApplication
         webView = null
         try {
-            if (SP.useX5WebView && YourTVApplication.getInstance().isX5Available()) {
+            if (SP.useX5WebView && TwotwoTVApplication.getInstance().isX5Available()) {
                 Log.i(TAG, "Creating X5 WebView")
                 webView = X5WebView(requireContext()).apply {
                     settings.apply {
@@ -684,8 +684,8 @@ class WebFragment : Fragment(), WebFragmentCallback {
                 isFocusableInTouchMode = false
                 setOnTouchListener { _, event ->
                     when (activity) {
-                        is com.horsenma.yourtv.MainActivity -> {
-                            (activity as com.horsenma.yourtv.MainActivity).gestureDetector.onTouchEvent(event)
+                        is com.Twotwo.TwotwoTV.MainActivity -> {
+                            (activity as com.Twotwo.TwotwoTV.MainActivity).gestureDetector.onTouchEvent(event)
                             true // 强制返回 true
                         }
                         is com.horsenma.mytv1.MainActivity -> {
@@ -702,7 +702,7 @@ class WebFragment : Fragment(), WebFragmentCallback {
         }
 
         when (activity) {
-            is com.horsenma.yourtv.MainActivity -> (activity as com.horsenma.yourtv.MainActivity).ready()
+            is com.Twotwo.TwotwoTV.MainActivity -> (activity as com.Twotwo.TwotwoTV.MainActivity).ready()
             is com.horsenma.mytv1.MainActivity -> (activity as com.horsenma.mytv1.MainActivity).ready(TAG)
             else -> Log.w(TAG, "Activity not supported for ready call")
         }
@@ -771,7 +771,7 @@ class WebFragment : Fragment(), WebFragmentCallback {
     }
 
     fun updateWebViewLayout() {
-        val application = requireActivity().applicationContext as YourTVApplication
+        val application = requireActivity().applicationContext as com.Twotwo.TwotwoTV.TwotwoTVApplication
         webView?.layoutParams = FrameLayout.LayoutParams(
             application.videoWidthPx(),
             application.videoHeightPx()
@@ -779,7 +779,7 @@ class WebFragment : Fragment(), WebFragmentCallback {
             gravity = Gravity.CENTER // 确保非全屏时居中
         }
         webView?.requestLayout()
-        Log.d(TAG, "WebView layout updated, fullScreenMode: ${com.horsenma.yourtv.SP.fullScreenMode}")
+        Log.d(TAG, "WebView layout updated, fullScreenMode: ${com.Twotwo.TwotwoTV.SP.fullScreenMode}")
     }
 
     fun showVolume(visibility: Int) {

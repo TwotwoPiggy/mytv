@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.YourTV" parent="Theme.AppCompat.NoActionBar">
+    <style name="Theme.TwotwoTV" parent="Theme.AppCompat.NoActionBar">
         <item name="windowNoTitle">true</item>
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:windowDisablePreview">true</item>

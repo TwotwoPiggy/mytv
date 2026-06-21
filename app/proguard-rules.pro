@@ -1,11 +1,11 @@
 # 保留 ReqSourceAdd，允许混淆
--keep,allowobfuscation class com.horsenma.yourtv.data.ReqSourceAdd {
+-keep,allowobfuscation class com.Twotwo.TwotwoTV.data.ReqSourceAdd {
     *;
     <init>(...);
 }
 
 # 保留 data class 字段和必要方法
--keepclassmembers class com.horsenma.yourtv.data.** {
+-keepclassmembers class com.Twotwo.TwotwoTV.data.** {
     private <fields>;
     public <fields>;
     <init>(...);
@@ -28,11 +28,11 @@
 }
 
 # 保留 decoder，允许混淆
--keep,allowobfuscation class com.horsenma.yourtv.SourceDecoder {
+-keep,allowobfuscation class com.Twotwo.TwotwoTV.SourceDecoder {
     public static <methods>;
     <init>(...);
 }
--keep,allowobfuscation class com.horsenma.yourtv.SourceEncoder {
+-keep,allowobfuscation class com.Twotwo.TwotwoTV.SourceEncoder {
     public static <methods>;
     <init>(...);
 }
@@ -40,10 +40,10 @@
 # Gson 相关
 -keep class com.google.gson.** { *; }
 -keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
--keep class com.horsenma.yourtv.data.ReqSources { <fields>; <init>(...); }
--keep class com.horsenma.yourtv.data.Source { <fields>; <init>(...); }
--keep class com.horsenma.yourtv.data.TV { <fields>; <init>(...); }
--keep class com.horsenma.yourtv.data.EPG { <fields>; <init>(...); }
+-keep class com.Twotwo.TwotwoTV.data.ReqSources { <fields>; <init>(...); }
+-keep class com.Twotwo.TwotwoTV.data.Source { <fields>; <init>(...); }
+-keep class com.Twotwo.TwotwoTV.data.TV { <fields>; <init>(...); }
+-keep class com.Twotwo.TwotwoTV.data.EPG { <fields>; <init>(...); }
 -dontwarn com.google.gson.**
 
 # 日志移除
@@ -66,8 +66,8 @@
 -keep class fi.iki.elonen.** { *; }
 -keep class kotlin.coroutines.** { *; }
 -keep class kotlinx.coroutines.** { *; }
--keep class com.horsenma.yourtv.databinding.*Binding { *; }
--keepclassmembers class com.horsenma.yourtv.databinding.*Binding {
+-keep class com.Twotwo.TwotwoTV.databinding.*Binding { *; }
+-keepclassmembers class com.Twotwo.TwotwoTV.databinding.*Binding {
     public <methods>;
     <init>(...);
 }
@@ -77,7 +77,7 @@
 -dontwarn com.tencent.smtt.**
 
 # ViewModelUtils
--keep class com.horsenma.yourtv.Utils.ViewModelUtils {
+-keep class com.Twotwo.TwotwoTV.Utils.ViewModelUtils {
     public static <methods>;
     <init>(...);
 }

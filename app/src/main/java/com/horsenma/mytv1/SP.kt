@@ -3,7 +3,7 @@ package com.horsenma.mytv1
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.horsenma.yourtv.R
+import com.Twotwo.TwotwoTV.R
 
 
 object SP {

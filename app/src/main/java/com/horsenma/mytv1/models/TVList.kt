@@ -7,7 +7,7 @@ import android.widget.Toast
 import androidx.core.net.toFile
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.horsenma.yourtv.R
+import com.Twotwo.TwotwoTV.R
 import com.horsenma.mytv1.SP
 import com.horsenma.mytv1.Utils.getDateFormat
 import com.horsenma.mytv1.data.Global.gson
@@ -19,7 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import com.horsenma.yourtv.SourceDecoder
+import com.Twotwo.TwotwoTV.SourceDecoder
 
 
 

@@ -12,12 +12,12 @@ import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.horsenma.yourtv.databinding.MenuBinding
+import com.Twotwo.TwotwoTV.databinding.MenuBinding
 import com.horsenma.mytv1.models.TVList
 import com.horsenma.mytv1.models.TVListModel
 import com.horsenma.mytv1.models.TVModel
-import com.horsenma.yourtv.YourTVApplication
-import com.horsenma.yourtv.R
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
+import com.Twotwo.TwotwoTV.R
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.text.clear
 
@@ -36,7 +36,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         savedInstanceState: Bundle?
     ): View {
         val context = requireContext()
-        val application = context.applicationContext as YourTVApplication
+        val application = context.applicationContext as TwotwoTVApplication
         _binding = MenuBinding.inflate(inflater, container, false)
 
         // 设置根视图可聚焦

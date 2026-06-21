@@ -3,7 +3,7 @@ package com.horsenma.mytv1
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.horsenma.yourtv.R
+import com.Twotwo.TwotwoTV.R
 import com.tencent.smtt.sdk.WebView
 
 

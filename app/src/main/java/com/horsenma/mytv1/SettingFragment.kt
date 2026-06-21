@@ -23,19 +23,19 @@ import androidx.core.view.marginEnd
 import androidx.core.view.marginTop
 import androidx.fragment.app.Fragment
 import com.horsenma.mytv1.models.TVList
-import com.horsenma.yourtv.R
+import com.Twotwo.TwotwoTV.R
 import com.horsenma.mytv1.SimpleServer.Companion.PORT
 import com.horsenma.mytv1.ModalFragment.Companion.KEY_URL
-import com.horsenma.yourtv.YourTVApplication
-import com.horsenma.yourtv.databinding.SettingMytv1Binding
-import com.horsenma.yourtv.UpdateManager
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
+import com.Twotwo.TwotwoTV.databinding.SettingMytv1Binding
+import com.Twotwo.TwotwoTV.UpdateManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.provider.Settings
 import androidx.appcompat.widget.SwitchCompat
 import android.os.Handler
 import android.os.Looper
-import com.horsenma.yourtv.R.string
+import com.Twotwo.TwotwoTV.R.string
 
 @Suppress("DEPRECATION")
 class SettingFragment : Fragment() {
@@ -64,7 +64,7 @@ class SettingFragment : Fragment() {
 
         val context = requireActivity()
         val mainActivity = (activity as MainActivity)
-        val application = context.applicationContext as YourTVApplication
+        val application = context.applicationContext as TwotwoTVApplication
 
         // Initialize controls
         binding.versionName.text = "v${context.appVersionName}"
@@ -116,16 +116,16 @@ class SettingFragment : Fragment() {
             SP.displaySeconds = isChecked
             mainActivity.settingActive()
         }
-        setupSwitch(binding.switchEnableWebviewType, !com.horsenma.yourtv.SP.enableWebviewType) { isChecked ->
-            com.horsenma.yourtv.SP.enableWebviewType = !isChecked
+        setupSwitch(binding.switchEnableWebviewType, !com.Twotwo.TwotwoTV.SP.enableWebviewType) { isChecked ->
+            com.Twotwo.TwotwoTV.SP.enableWebviewType = !isChecked
             mainActivity.handleWebviewTypeSwitch(isChecked)
             mainActivity.settingActive()
         }
 
-        setupSwitch(binding.switchFullScreenMode, com.horsenma.yourtv.SP.fullScreenMode) { isChecked ->
-            com.horsenma.yourtv.SP.fullScreenMode = isChecked
+        setupSwitch(binding.switchFullScreenMode, com.Twotwo.TwotwoTV.SP.fullScreenMode) { isChecked ->
+            com.Twotwo.TwotwoTV.SP.fullScreenMode = isChecked
             mainActivity.updateFullScreenMode(isChecked)
-            (context.applicationContext as YourTVApplication).toggleFullScreenMode(isChecked)
+            (context.applicationContext as TwotwoTVApplication).toggleFullScreenMode(isChecked)
             mainActivity.settingActive()
         }
 
@@ -227,7 +227,7 @@ class SettingFragment : Fragment() {
         0
         // 修改退出按钮为X5管理
         binding.exit.setOnClickListener {
-            val isX5Available = YourTVApplication.getInstance().isX5Available()
+            val isX5Available = TwotwoTVApplication.getInstance().isX5Available()
             Log.d(TAG, "exit button: isX5Available=$isX5Available, useX5WebView=${SP.useX5WebView}")
             if (!isX5Available) {
                 // 强制关闭 X5 模式，与 switchWebviewType 保持一致
@@ -397,7 +397,7 @@ class SettingFragment : Fragment() {
     }
 
     private fun updateWebviewTypeSwitch() {
-        val isX5Available = YourTVApplication.getInstance().isX5Available()
+        val isX5Available = TwotwoTVApplication.getInstance().isX5Available()
         Log.d(TAG, "updateWebviewTypeSwitch: isX5Available=$isX5Available, useX5WebView=${SP.useX5WebView}")
 
         if (!isX5Available) {

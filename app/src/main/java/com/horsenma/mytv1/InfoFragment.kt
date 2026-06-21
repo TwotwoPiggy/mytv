@@ -15,10 +15,10 @@ import androidx.core.view.marginStart
 import androidx.core.view.marginTop
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
-import com.horsenma.yourtv.databinding.InfoBinding
+import com.Twotwo.TwotwoTV.databinding.InfoBinding
 import com.horsenma.mytv1.models.TVModel
-import com.horsenma.yourtv.YourTVApplication
-import com.horsenma.yourtv.R
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
+import com.Twotwo.TwotwoTV.R
 
 
 class InfoFragment : Fragment() {
@@ -34,7 +34,7 @@ class InfoFragment : Fragment() {
     ): View {
         _binding = InfoBinding.inflate(inflater, container, false)
 
-        val application = requireActivity().applicationContext as YourTVApplication
+        val application = requireActivity().applicationContext as TwotwoTVApplication
 
         binding.info.layoutParams.width = application.px2Px(binding.info.layoutParams.width)
         binding.info.layoutParams.height = application.px2Px(binding.info.layoutParams.height)

@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.horsenma.yourtv"
+    namespace = "com.Twotwo.TwotwoTV"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.horsenma.yourtv"
+        applicationId = "com.Twotwo.TwotwoTV"
         minSdk = 23
         targetSdk = 35
         versionCode = getVersionCode()
@@ -62,8 +62,8 @@ android {
     applicationVariants.all {
         outputs.all {
             if (this is com.android.build.gradle.internal.api.BaseVariantOutputImpl) {
-                val appName = "yourtv"
-                val newName = "${appName}_v1.8.5.apk"
+                val appName = "twotwotv"
+                val newName = "${appName}_v${getVersionName()}.apk"
                 outputFileName = newName
             }
         }
@@ -71,7 +71,7 @@ android {
 }
 
 fun getVersionName(): String {
-    return "1.8.5"
+    return "0.0.1"
 }
 
 fun getVersionCode(): Int {

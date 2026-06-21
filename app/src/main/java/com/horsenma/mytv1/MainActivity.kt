@@ -25,8 +25,8 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.horsenma.mytv1.models.TVList
 import kotlin.math.abs
-import com.horsenma.yourtv.R
-import com.horsenma.yourtv.showToast
+import com.Twotwo.TwotwoTV.R
+import com.Twotwo.TwotwoTV.showToast
 import kotlinx.coroutines.*
 
 
@@ -96,8 +96,8 @@ class MainActivity : FragmentActivity() {
         TVList.reloadData(this)
         Log.d(TAG, "TVList initialized in onCreate")
 
-        updateFullScreenMode(com.horsenma.yourtv.SP.fullScreenMode) // 初始化全屏模式
-        Log.d(TAG, "com.horsenma.yourtv.SP.fullScreenMode = ${com.horsenma.yourtv.SP.fullScreenMode}")
+        updateFullScreenMode(com.Twotwo.TwotwoTV.SP.fullScreenMode) // 初始化全屏模式
+        Log.d(TAG, "com.Twotwo.TwotwoTV.SP.fullScreenMode = ${com.Twotwo.TwotwoTV.SP.fullScreenMode}")
 
         setContentView(R.layout.activity_main)
 
@@ -794,10 +794,10 @@ class MainActivity : FragmentActivity() {
                     }
                 }
                 Log.d(TAG, "All fragments hidden")
-                com.horsenma.yourtv.SP.enableWebviewType = false
+                com.Twotwo.TwotwoTV.SP.enableWebviewType = false
                 Log.d(TAG, "SP.enableWebviewType set to false")
                 delay(500)
-                val intent = Intent(this@MainActivity, com.horsenma.yourtv.MainActivity::class.java).apply {
+                val intent = Intent(this@MainActivity, com.Twotwo.TwotwoTV.MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 startActivity(intent)

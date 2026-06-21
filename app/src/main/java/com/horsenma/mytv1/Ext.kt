@@ -11,7 +11,7 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import java.security.MessageDigest
-import com.horsenma.yourtv.YourTVApplication
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
 
 private const val TAG = "Extensions"
 
@@ -86,11 +86,11 @@ private fun hashSignature(signature: Signature): String {
 }
 
 fun String.showToast(duration: Int = Toast.LENGTH_SHORT) {
-    YourTVApplication.getInstance().toast(this, duration)
+    TwotwoTVApplication.getInstance().toast(this, duration)
 }
 
 fun Int.getString(): String {
-    return YourTVApplication.getInstance().getString(this)
+    return TwotwoTVApplication.getInstance().getString(this)
 }
 
 fun Int.showToast(duration: Int = Toast.LENGTH_SHORT) {

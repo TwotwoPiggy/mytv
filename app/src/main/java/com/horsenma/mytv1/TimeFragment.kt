@@ -9,13 +9,13 @@ import androidx.core.view.marginEnd
 import androidx.core.view.marginTop
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.horsenma.yourtv.databinding.TimeBinding
+import com.Twotwo.TwotwoTV.databinding.TimeBinding
 import com.horsenma.mytv1.models.TVList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import com.horsenma.yourtv.YourTVApplication
+import com.Twotwo.TwotwoTV.TwotwoTVApplication
 
 
 
@@ -33,7 +33,7 @@ class TimeFragment : Fragment() {
     ): View {
         _binding = TimeBinding.inflate(inflater, container, false)
 
-        val application = requireActivity().applicationContext as YourTVApplication
+        val application = requireActivity().applicationContext as TwotwoTVApplication
 
         binding.time.layoutParams.width = application.px2Px(binding.time.layoutParams.width)
         binding.time.layoutParams.height = application.px2Px(binding.time.layoutParams.height)
