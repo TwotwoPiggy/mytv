@@ -23,7 +23,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
-import com.horsenma.mytv1.models.TVList
+import com.horsenma.mytv1.models.TVModel
 import kotlin.math.abs
 import com.Twotwo.TwotwoTV.R
 import com.Twotwo.TwotwoTV.showToast
@@ -32,7 +32,6 @@ import kotlinx.coroutines.*
 
 class MainActivity : FragmentActivity() {
 
-    private var ok = 0
     internal var webFragment = com.horsenma.mytv1.WebFragment()
     private val errorFragment = com.horsenma.mytv1.ErrorFragment()
     private val loadingFragment = com.horsenma.mytv1.LoadingFragment()
@@ -49,7 +48,9 @@ class MainActivity : FragmentActivity() {
     private var server: SimpleServer? = null
     private var isSafeToPerformFragmentTransactions = false
 
-    // 在 GestureListener 类顶部添加计数变量
+    private var currentIndex = 0
+    private var currentTvModel: TVModel? = null
+
     private var menuPressCount = 0
     private var lastMenuPressTime = 0L
     private val MENU_PRESS_INTERVAL = 300L
@@ -61,19 +62,17 @@ class MainActivity : FragmentActivity() {
     private val BACK_PRESS_INTERVAL = 2000L
 
     private val handleEnterRunnable = Runnable {
-        if (menuPressCount == 1) { // 单次按键触发 menuFragment
+        if (menuPressCount == 1) {
             showFragment(menuFragment)
             menuActive()
         }
-        menuPressCount = 0 // 重置计数
+        menuPressCount = 0
     }
 
     private val handleRightRunnable = Runnable {
-        // RIGHT 键单次无操作，保持原有逻辑（不触发 sourceUp）
-        menuPressCount = 0 // 重置计数
+        menuPressCount = 0
     }
 
-    // 添加 handleTapRunnable
     private val handleTapRunnable = Runnable {
         if (menuPressCount >= REQUIRED_MENU_PRESSES) {
             showSetting()
@@ -82,17 +81,15 @@ class MainActivity : FragmentActivity() {
             showFragment(menuFragment)
             menuActive()
         }
-        menuPressCount = 0 // 重置计数
+        menuPressCount = 0
     }
 
-    // 文件: com.horsenma.mytv1.MainActivity
     @RequiresApi(Build.VERSION_CODES.P)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SP.init(this)
 
-        updateFullScreenMode(com.Twotwo.TwotwoTV.SP.fullScreenMode) // 初始化全屏模式
-        Log.d(TAG, "com.Twotwo.TwotwoTV.SP.fullScreenMode = ${com.Twotwo.TwotwoTV.SP.fullScreenMode}")
+        updateFullScreenMode(com.Twotwo.TwotwoTV.SP.fullScreenMode)
 
         setContentView(R.layout.activity_main)
 
@@ -116,11 +113,134 @@ class MainActivity : FragmentActivity() {
 
         gestureDetector = GestureDetector(this, GestureListener(this))
 
-        // 在后台线程初始化 TVList，避免 ANR
-        lifecycleScope.launch(Dispatchers.IO) {
-            TVList.reset()
-            TVList.reloadData(this@MainActivity)
-            Log.d(TAG, "TVList initialized in background")
+        // 延迟 500ms 确保 WebView 完全初始化，然后加载并播放
+        handler.postDelayed({
+            loadAndPlay()
+        }, 500)
+
+        server = SimpleServer(this)
+    }
+
+    /**
+     * 加载频道数据并播放第一个频道
+     */
+    private fun loadAndPlay() {
+        lifecycleScope.launch {
+            try {
+                val channels = withContext(Dispatchers.IO) {
+                    ChannelLoader.load(this@MainActivity)
+                }
+                Log.d(TAG, "Loaded ${channels.size} channels")
+                if (channels.isEmpty()) {
+                    Log.w(TAG, "No channels available")
+                    getString(R.string.no_available_channel).showToast(Toast.LENGTH_LONG)
+                    return@launch
+                }
+
+                val tv = ChannelLoader.getChannel(0)!!
+                val tvModel = ChannelLoader.createTVModel(tv, 0)
+                currentIndex = 0
+                currentTvModel = tvModel
+
+                // 观察 errInfo 状态变化
+                tvModel.errInfo.observe(this@MainActivity) { errInfo ->
+                    if (errInfo == null) return@observe
+                    Log.d(TAG, "errInfo changed: $errInfo")
+                    if (errInfo == "" || errInfo == "web ok") {
+                        hideFragment(loadingFragment)
+                        hideErrorFragment()
+                        showFragment(webFragment)
+                        Log.i(TAG, "${tvModel.tv.title} 播放中")
+                    } else {
+                        hideFragment(loadingFragment)
+                        hideFragment(webFragment)
+                        showErrorFragment(errInfo)
+                        Log.i(TAG, "${tvModel.tv.title} 错误: $errInfo")
+                    }
+                }
+
+                // 显示加载中，然后播放
+                showFragment(loadingFragment)
+                webFragment.play(tvModel)
+                infoFragment.show(tvModel)
+                Log.d(TAG, "Playing first channel: ${tvModel.tv.title}")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load channels: ${e.message}", e)
+                getString(R.string.no_available_channel).showToast(Toast.LENGTH_LONG)
+            }
+        }
+    }
+
+    fun ready(tag: String) {
+        Log.i(TAG, "ready $tag")
+    }
+
+    fun updateMenuSize() {
+        menuFragment.updateSize()
+    }
+
+    /**
+     * 播放指定索引的频道
+     */
+    fun play(position: Int) {
+        val count = ChannelLoader.getChannelCount()
+        if (position < 0 || position >= count) {
+            Toast.makeText(this, "频道不存在", Toast.LENGTH_LONG).show()
+            return
+        }
+        val tv = ChannelLoader.getChannel(position) ?: return
+        val tvModel = ChannelLoader.createTVModel(tv, position)
+        currentIndex = position
+        currentTvModel = tvModel
+
+        // 观察 errInfo 状态变化
+        tvModel.errInfo.observe(this) { errInfo ->
+            if (errInfo == null) return@observe
+            if (errInfo == "" || errInfo == "web ok") {
+                hideFragment(loadingFragment)
+                hideErrorFragment()
+                showFragment(webFragment)
+            } else {
+                hideFragment(loadingFragment)
+                hideFragment(webFragment)
+                showErrorFragment(errInfo)
+            }
+        }
+
+        hideErrorFragment()
+        showFragment(loadingFragment)
+        webFragment.play(tvModel)
+        infoFragment.show(tvModel)
+        if (SP.channelNum) {
+            channelFragment.show(tvModel)
+        }
+        Log.i(TAG, "Playing channel $position: ${tvModel.tv.title}")
+    }
+
+    fun prev() {
+        val count = ChannelLoader.getChannelCount()
+        if (count == 0) return
+        var position = currentIndex - 1
+        if (position < 0) position = count - 1
+        play(position)
+    }
+
+    fun next() {
+        val count = ChannelLoader.getChannelCount()
+        if (count == 0) return
+        var position = currentIndex + 1
+        if (position >= count) position = 0
+        play(position)
+    }
+
+    fun onPlayEnd() {
+        val tvModel = currentTvModel ?: return
+        if (SP.repeatInfo) {
+            infoFragment.show(tvModel)
+            if (SP.channelNum) {
+                channelFragment.show(tvModel)
+            }
         }
     }
 
@@ -138,110 +258,17 @@ class MainActivity : FragmentActivity() {
             windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
         }
-        window.attributes = params // 强制应用窗口属性
+        window.attributes = params
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
-        // 强制刷新窗口
         window.decorView.requestLayout()
         window.decorView.invalidate()
-        Log.d(TAG, "updateFullScreenMode: isFullScreen=$isFullScreen, layoutInDisplayCutoutMode=${window.attributes.layoutInDisplayCutoutMode}")
         if (isSafeToPerformFragmentTransactions && webFragment.isAdded) {
             handler.removeCallbacksAndMessages(null)
             handler.postDelayed({
                 webFragment.updateWebViewLayout()
-                val displayMetrics = resources.displayMetrics
-                Log.d(TAG, "Window size: width=${displayMetrics.widthPixels}, height=${displayMetrics.heightPixels}")
             }, 100)
-        }
-    }
-
-    override fun onResumeFragments() {
-        super.onResumeFragments()
-        Log.i(TAG, "watch")
-        TVList.groupModel.change.observe(this) { _ ->
-            Log.i(TAG, "groupModel changed")
-            if (TVList.groupModel.tvGroupModel.value != null) {
-                watch()
-                Log.i(TAG, "menuFragment update")
-                menuFragment.update()
-            }
-        }
-        // 确保播放默认频道或第一个可用频道
-        if (TVList.size() > 0) {
-            if (!TVList.setPosition(0)) {
-                Log.w(TAG, "Failed to set position 0, list may be empty")
-                getString(R.string.channel_list_empty).showToast(Toast.LENGTH_LONG)
-            } else {
-                getString(R.string.play_default_channel).showToast(Toast.LENGTH_LONG)
-            }
-        } else {
-            Log.w(TAG, "No channels available")
-            getString(R.string.no_available_channel).showToast(Toast.LENGTH_LONG)
-        }
-        server = SimpleServer(this)
-    }
-
-    fun ready(tag: String) {
-        Log.i(TAG, "ready $tag")
-    }
-
-    fun updateMenuSize() {
-        menuFragment.updateSize()
-    }
-
-    private fun watch() {
-        TVList.listModel.forEach { tvModel ->
-            tvModel.errInfo.observe(this) { _ ->
-                if (tvModel.errInfo.value != null
-                    && tvModel.tv.id == TVList.position.value
-                ) {
-                    hideFragment(loadingFragment)
-                    if (tvModel.errInfo.value == "") {
-                        Log.i(TAG, "${tvModel.tv.title} 播放中")
-                        hideErrorFragment()
-                        showFragment(webFragment)
-                    } else if (tvModel.errInfo.value == "web ok") {
-                        Log.i(TAG, "${tvModel.tv.title} 播放中")
-                        hideErrorFragment()
-                        showFragment(webFragment)
-                    } else {
-                        Log.i(TAG, "${tvModel.tv.title} ${tvModel.errInfo.value.toString()}")
-                        hideFragment(webFragment)
-                        hideFragment(webFragment)
-                        showErrorFragment(tvModel.errInfo.value.toString())
-                    }
-                }
-            }
-
-            tvModel.ready.observe(this) { _ ->
-
-                // not first time && channel is not changed
-                if (tvModel.ready.value != null
-                    && tvModel.tv.id == TVList.position.value
-                ) {
-                    Log.i(TAG, "loading ${tvModel.tv.title}")
-                    hideErrorFragment()
-                    showFragment(loadingFragment)
-                    webFragment.play(tvModel)
-                    infoFragment.show(tvModel)
-                    if (SP.channelNum) {
-                        channelFragment.show(tvModel)
-                    }
-                }
-            }
-
-            tvModel.like.observe(this) { _ ->
-                if (tvModel.like.value != null) {
-                    val liked = tvModel.like.value as Boolean
-                    if (liked) {
-                        TVList.groupModel.getTVListModel(0)?.replaceTVModel(tvModel)
-                    } else {
-                        TVList.groupModel.getTVListModel(0)?.removeTVModel(tvModel.tv.id)
-                    }
-                    SP.setLike(tvModel.tv.id, liked)
-                }
-            }
         }
     }
 
@@ -259,7 +286,6 @@ class MainActivity : FragmentActivity() {
         private var screenWidth = windowManager.defaultDisplay.width
         private var screenHeight = windowManager.defaultDisplay.height
         private val audioManager = context.getSystemService(AUDIO_SERVICE) as AudioManager
-
         private var maxVolume = 0
 
         init {
@@ -277,7 +303,6 @@ class MainActivity : FragmentActivity() {
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            // 记录双击
             val currentTime = System.currentTimeMillis()
             val timeSinceLastTap = currentTime - lastMenuPressTime
             if (timeSinceLastTap <= MENU_TAP_INTERVAL) {
@@ -286,11 +311,8 @@ class MainActivity : FragmentActivity() {
                 menuPressCount = 2
             }
             lastMenuPressTime = currentTime
-
-            // 延迟处理，等待可能的后续双击
             handler.removeCallbacks(handleTapRunnable)
             handler.postDelayed(handleTapRunnable, MENU_TAP_INTERVAL)
-
             return true
         }
 
@@ -316,7 +338,6 @@ class MainActivity : FragmentActivity() {
                     }
                 }
             }
-
             return super.onFling(e1, e2, velocityX, velocityY)
         }
 
@@ -331,18 +352,13 @@ class MainActivity : FragmentActivity() {
         ): Boolean {
             val oldX = e1?.rawX ?: 0f
             val oldY = e1?.rawY ?: 0f
-            val newX = e2.rawX
-            val newY = e2.rawY
 
             if (oldX < screenWidth / 3) {
                 val currentTime = System.currentTimeMillis()
                 val deltaTime = currentTime - lastScrollTime
                 lastScrollTime = currentTime
-
-                decayFactor =
-                    0.01f.coerceAtLeast(decayFactor - 0.03f * deltaTime)
-                val delta =
-                    ((oldY - newY) * decayFactor * 0.2 / screenHeight).toFloat()
+                decayFactor = 0.01f.coerceAtLeast(decayFactor - 0.03f * deltaTime)
+                val delta = ((oldY - e2.rawY) * decayFactor * 0.2 / screenHeight).toFloat()
                 adjustBrightness(delta)
                 decayFactor = 1.0f
                 return super.onScroll(e1, e2, distanceX, distanceY)
@@ -352,11 +368,8 @@ class MainActivity : FragmentActivity() {
                 val currentTime = System.currentTimeMillis()
                 val deltaTime = currentTime - lastScrollTime
                 lastScrollTime = currentTime
-
-                decayFactor =
-                    0.01f.coerceAtLeast(decayFactor - 0.03f * deltaTime)
-                val delta =
-                    ((oldY - newY) * maxVolume * decayFactor * 0.2 / screenHeight).toInt()
+                decayFactor = 0.01f.coerceAtLeast(decayFactor - 0.03f * deltaTime)
+                val delta = ((oldY - e2.rawY) * maxVolume * decayFactor * 0.2 / screenHeight).toInt()
                 adjustVolume(delta)
                 decayFactor = 1.0f
                 return super.onScroll(e1, e2, distanceX, distanceY)
@@ -367,118 +380,43 @@ class MainActivity : FragmentActivity() {
 
         private fun adjustVolume(deltaVolume: Int) {
             val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-
             var newVolume = currentVolume + deltaVolume
-
-            if (newVolume < 0) {
-                newVolume = 0
-            } else if (newVolume > maxVolume) {
-                newVolume = maxVolume
-            }
-
+            if (newVolume < 0) newVolume = 0
+            else if (newVolume > maxVolume) newVolume = maxVolume
             audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
-
             webFragment.setVolumeMax(maxVolume * 100)
-            webFragment.setVolume(newVolume.toInt() * 100, true)
+            webFragment.setVolume(newVolume * 100, true)
             webFragment.showVolume(View.VISIBLE)
         }
 
         private fun adjustBrightness(deltaBrightness: Float) {
             var brightness = window.attributes.screenBrightness
-
             brightness += deltaBrightness
             brightness = 0.1f.coerceAtLeast(0.9f.coerceAtMost(brightness))
-
-            val attributes = window.attributes.apply {
-                screenBrightness = brightness
-            }
-            window.attributes = attributes
-
+            window.attributes = window.attributes.apply { screenBrightness = brightness }
             webFragment.setVolumeMax(100)
             webFragment.setVolume((brightness * 100).toInt())
             webFragment.showVolume(View.VISIBLE)
         }
     }
 
-    fun onPlayEnd() {
-        val tvModel = TVList.getTVModel()!!
-        if (SP.repeatInfo) {
-            infoFragment.show(tvModel)
-            if (SP.channelNum) {
-                channelFragment.show(tvModel)
-            }
-        }
-    }
-
-    fun play(position: Int) {
-        val prevGroup = TVList.getTVModel()!!.groupIndex
-        if (position > -1 && position < TVList.size()) {
-            TVList.setPosition(position)
-            val currentGroup = TVList.getTVModel()!!.groupIndex
-            if (currentGroup != prevGroup) {
-                Log.i(TAG, "group change")
-                menuFragment.updateList(currentGroup)
-            }
-        } else {
-            Toast.makeText(this, "频道不存在", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    fun prev() {
-        val prevGroup = TVList.getTVModel()!!.groupIndex
-        var position = TVList.position.value?.dec() ?: 0
-        if (position == -1) {
-            position = TVList.size() - 1
-        }
-        TVList.setPosition(position)
-        val currentGroup = TVList.getTVModel()!!.groupIndex
-        if (currentGroup != prevGroup) {
-            Log.i(TAG, "group change")
-            menuFragment.updateList(currentGroup)
-        }
-    }
-
-    fun next() {
-        val prevGroup = TVList.getTVModel()!!.groupIndex
-        var position = TVList.position.value?.inc() ?: 0
-        if (position == TVList.size()) {
-            position = 0
-        }
-        TVList.setPosition(position)
-        val currentGroup = TVList.getTVModel()!!.groupIndex
-        if (currentGroup != prevGroup) {
-            Log.i(TAG, "group change")
-            menuFragment.updateList(currentGroup)
-        }
-    }
-
     fun showFragment(fragment: Fragment) {
-        if (!isSafeToPerformFragmentTransactions) {
-            return
-        }
+        if (!isSafeToPerformFragmentTransactions) return
         if (!fragment.isAdded) {
             supportFragmentManager.beginTransaction()
                 .add(R.id.main_browse_fragment, fragment)
                 .commitAllowingStateLoss()
             return
         }
-        if (!fragment.isHidden) {
-            return
-        }
+        if (!fragment.isHidden) return
         supportFragmentManager.beginTransaction()
             .show(fragment)
             .commitAllowingStateLoss()
     }
 
     private fun hideFragment(fragment: Fragment) {
-        if (!isSafeToPerformFragmentTransactions) {
-            return
-        }
-
-        if (!fragment.isAdded || fragment.isHidden) {
-            return
-        }
-
+        if (!isSafeToPerformFragmentTransactions) return
+        if (!fragment.isAdded || fragment.isHidden) return
         supportFragmentManager.beginTransaction()
             .hide(fragment)
             .commitAllowingStateLoss()
@@ -506,114 +444,72 @@ class MainActivity : FragmentActivity() {
         if (!isFinishing && !isDestroyed && !supportFragmentManager.isStateSaved) {
             try {
                 if (!settingFragment.isHidden) {
-                    supportFragmentManager.beginTransaction()
-                        .hide(settingFragment)
-                        .commit() // 替换为异步 commit
-                    Log.d(TAG, "SettingFragment hidden")
+                    supportFragmentManager.beginTransaction().hide(settingFragment).commit()
                 }
                 addTimeFragment()
             } catch (e: IllegalStateException) {
                 Log.e(TAG, "Failed to hide SettingFragment: ${e.message}", e)
             }
-        } else {
-            Log.w(TAG, "Skipped hideSetting: isFinishing=$isFinishing, isDestroyed=$isDestroyed, isStateSaved=${supportFragmentManager.isStateSaved}")
         }
     }
 
     fun addTimeFragment() {
-        if (SP.time) {
-            showFragment(timeFragment)
-        } else {
-            hideFragment(timeFragment)
-        }
+        if (SP.time) showFragment(timeFragment) else hideFragment(timeFragment)
     }
 
-    // 修改 showChannel 方法
     private fun showChannel(channel: String) {
-        if (!menuFragment.isHidden) {
-            return
-        }
-        if (settingFragment.isVisible) {
-            return
-        }
+        if (!menuFragment.isHidden) return
+        if (settingFragment.isVisible) return
         channelFragment.show(channel)
     }
 
     private fun channelUp() {
         if (menuFragment.isHidden && settingFragment.isHidden) {
-            if (SP.channelReversal) {
-                next()
-                return
-            }
-            prev()
+            if (SP.channelReversal) next() else prev()
         }
     }
 
     private fun channelDown() {
         if (menuFragment.isHidden && settingFragment.isHidden) {
-            if (SP.channelReversal) {
-                prev()
-                return
-            }
-            next()
+            if (SP.channelReversal) prev() else next()
         }
     }
 
     private fun showSetting() {
-        if (menuFragment.isAdded && !menuFragment.isHidden) {
-            return
-        }
+        if (menuFragment.isAdded && !menuFragment.isHidden) return
         showFragment(settingFragment)
         settingActive()
     }
 
     fun hideMenuFragment() {
-        supportFragmentManager.beginTransaction()
-            .hide(menuFragment)
-            .commit()
-        Log.i(TAG, "SP.time ${SP.time}")
+        supportFragmentManager.beginTransaction().hide(menuFragment).commit()
     }
 
     private fun hideSettingFragment() {
-        supportFragmentManager.beginTransaction()
-            .hide(settingFragment)
-            .commit()
+        supportFragmentManager.beginTransaction().hide(settingFragment).commit()
     }
 
     private fun showErrorFragment(msg: String) {
         errorFragment.show(msg)
-        if (!errorFragment.isHidden) {
-            return
-        }
-
-        supportFragmentManager.beginTransaction()
-            .show(errorFragment)
-            .commitNow()
+        if (!errorFragment.isHidden) return
+        supportFragmentManager.beginTransaction().show(errorFragment).commitNow()
     }
 
     private fun hideErrorFragment() {
         errorFragment.show("hide")
-        if (errorFragment.isHidden) {
-            return
-        }
-
-        supportFragmentManager.beginTransaction()
-            .hide(errorFragment)
-            .commitNow()
+        if (errorFragment.isHidden) return
+        supportFragmentManager.beginTransaction().hide(errorFragment).commitNow()
     }
 
     private fun handleTapCount(tapCount: Int): Boolean {
         val currentTime = System.currentTimeMillis()
         val timeSinceLastTap = currentTime - lastMenuPressTime
-
         if (timeSinceLastTap <= MENU_TAP_INTERVAL) {
             menuPressCount += tapCount
         } else {
             menuPressCount = tapCount
         }
         lastMenuPressTime = currentTime
-
-        // 延迟处理，等待可能的后续点击
         handler.removeCallbacks(handleTapRunnable)
         handler.postDelayed(handleTapRunnable, MENU_TAP_INTERVAL)
         return true
@@ -695,21 +591,18 @@ class MainActivity : FragmentActivity() {
             KEYCODE_ENTER, KEYCODE_DPAD_CENTER -> {
                 val currentTime = System.currentTimeMillis()
                 val timeSinceLastPress = currentTime - lastMenuPressTime
-
-                if (timeSinceLastPress <= 400) { // 300ms 内连续按
+                if (timeSinceLastPress <= 400) {
                     menuPressCount++
-                    if (menuPressCount >= 4) { // 4 次触发 settingFragment
+                    if (menuPressCount >= 4) {
                         showSetting()
                         menuPressCount = 0
-                        handler.removeCallbacks(handleEnterRunnable) // 取消 menuFragment 显示
+                        handler.removeCallbacks(handleEnterRunnable)
                         return true
                     }
                 } else {
-                    menuPressCount = 1 // 重置计数
+                    menuPressCount = 1
                 }
                 lastMenuPressTime = currentTime
-
-                // 延迟 600ms 检查是否显示 menuFragment
                 handler.removeCallbacks(handleEnterRunnable)
                 handler.postDelayed(handleEnterRunnable, 600)
                 return true
@@ -721,7 +614,7 @@ class MainActivity : FragmentActivity() {
                     menuActive()
                     return false
                 }
-                return false // 无 programFragment，不拦截
+                return false
             }
             KEYCODE_DPAD_RIGHT -> {
                 if (menuFragment.isAdded && !menuFragment.isHidden ||
@@ -732,21 +625,18 @@ class MainActivity : FragmentActivity() {
                 }
                 val currentTime = System.currentTimeMillis()
                 val timeSinceLastPress = currentTime - lastMenuPressTime
-
-                if (timeSinceLastPress <= 400) { // 400ms 内连续按
+                if (timeSinceLastPress <= 400) {
                     menuPressCount++
-                    if (menuPressCount >= 4) { // 4 次触发 settingFragment
+                    if (menuPressCount >= 4) {
                         showSetting()
                         menuPressCount = 0
-                        handler.removeCallbacks(handleRightRunnable) // 取消其他操作
+                        handler.removeCallbacks(handleRightRunnable)
                         return true
                     }
                 } else {
-                    menuPressCount = 1 // 重置计数
+                    menuPressCount = 1
                 }
                 lastMenuPressTime = currentTime
-
-                // 延迟 600ms 检查是否触发其他操作（当前无 sourceUp）
                 handler.removeCallbacks(handleRightRunnable)
                 handler.postDelayed(handleRightRunnable, 600)
                 return true
@@ -756,13 +646,10 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (onKey(keyCode)) {
-            return true
-        }
-        return false  // 不调用 super.onKeyDown，阻止系统默认退出
+        if (onKey(keyCode)) return true
+        return false
     }
 
-    // 在 onResume 中恢复视图
     override fun onResume() {
         super.onResume()
         isSafeToPerformFragmentTransactions = true
@@ -770,24 +657,19 @@ class MainActivity : FragmentActivity() {
     }
 
     fun handleWebviewTypeSwitch(enable: Boolean) {
-        if (enable) return // 仅处理切换到 IPTV 模式
+        if (enable) return
         val currentTime = System.currentTimeMillis()
-        if (currentTime - lastSwitchTime < DEBOUNCE_INTERVAL) {
-            Log.d(TAG, "Switch ignored due to debounce")
-            return
-        }
+        if (currentTime - lastSwitchTime < DEBOUNCE_INTERVAL) return
         lastSwitchTime = currentTime
 
         lifecycleScope.launch(Dispatchers.Main) {
             try {
-                // 释放 WebFragment 资源
                 if (webFragment.isAdded) {
                     supportFragmentManager.beginTransaction()
                         .remove(webFragment)
                         .commitNowAllowingStateLoss()
-                    webFragment = WebFragment() // 创建新实例
+                    webFragment = WebFragment()
                 }
-                // 隐藏其他 Fragment
                 supportFragmentManager.fragments.forEach { fragment ->
                     if (fragment.isAdded && !fragment.isHidden) {
                         supportFragmentManager.beginTransaction()
@@ -795,18 +677,15 @@ class MainActivity : FragmentActivity() {
                             .commitNowAllowingStateLoss()
                     }
                 }
-                Log.d(TAG, "All fragments hidden")
                 com.Twotwo.TwotwoTV.SP.enableWebviewType = false
-                Log.d(TAG, "SP.enableWebviewType set to false")
                 delay(500)
                 val intent = Intent(this@MainActivity, com.Twotwo.TwotwoTV.MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 startActivity(intent)
                 finish()
-                Log.d(TAG, "Switched to yourtv.MainActivity with new task")
             } catch (e: Exception) {
-                Log.e(TAG, "Error switching to yourtv.MainActivity: ${e.message}", e)
+                Log.e(TAG, "Error switching to IPTV: ${e.message}", e)
                 R.string.switch_iptv_failed.showToast()
             }
         }
@@ -814,15 +693,13 @@ class MainActivity : FragmentActivity() {
 
     override fun onPause() {
         super.onPause()
-
         isSafeToPerformFragmentTransactions = false
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        handler.removeCallbacksAndMessages(null) // 清理所有 Handler 任务
+        handler.removeCallbacksAndMessages(null)
         server?.stop()
-        Log.d(TAG, "MainActivity destroyed, Handler callbacks cleared")
     }
 
     companion object {

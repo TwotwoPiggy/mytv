@@ -285,11 +285,13 @@ object TVList {
         SP.position = 0
         SP.positionGroup = 0
         SP.configUrl = null
-        // 删除缓存文件
-        val file = File(appDirectory, CACHE_FILE_NAME)
-        if (file.exists()) {
-            file.delete()
-            Log.d(TAG, "Cache file $CACHE_FILE_NAME deleted")
+        // 删除缓存文件（仅在 appDirectory 已初始化时）
+        if (::appDirectory.isInitialized) {
+            val file = File(appDirectory, CACHE_FILE_NAME)
+            if (file.exists()) {
+                file.delete()
+                Log.d(TAG, "Cache file $CACHE_FILE_NAME deleted")
+            }
         }
         Log.d(TAG, "TVList state reset")
     }
@@ -298,6 +300,143 @@ object TVList {
         // 重新执行初始化逻辑
         init(context)
         Log.d(TAG, "TVList data reloaded")
+    }
+
+    /**
+     * 在后台线程读取并解析频道数据（不涉及 LiveData，安全在 IO 线程调用）
+     * 返回解析后的 TV 列表
+     */
+    fun readAndParseChannels(context: Context): List<TV> {
+        appDirectory = context.filesDir
+        val file = File(appDirectory, CACHE_FILE_NAME)
+        val str = if (file.exists()) {
+            Log.i(TAG, "read $file")
+            file.readText()
+        } else {
+            Log.i(TAG, "read resource")
+            context.resources.openRawResource(DEFAULT_CHANNELS_FILE).bufferedReader(Charsets.UTF_8)
+                .use { it.readText() }
+        }
+
+        if (str.isEmpty()) {
+            Log.e(TAG, "Input string is empty")
+            return emptyList()
+        }
+
+        try {
+            var string = str
+            val isPlainText = str.trim().startsWith("#EXTM3U") ||
+                    str.trim().startsWith("http://") ||
+                    str.trim().startsWith("https://")
+            val isHex = str.trim().matches(Regex("^[0-9a-fA-F]+$"))
+
+            if (isHex) {
+                string = SourceDecoder.decodeHexSource(str) ?: str
+                Log.i(TAG, "Decoded HEX, new string length=${string.length}")
+            } else if (!isPlainText) {
+                try {
+                    string = SourceDecoder.decodeHexSource(str) ?: str
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to decode: ${e.message}")
+                }
+            }
+
+            if (string.getOrNull(0) != '[') {
+                Log.e(TAG, "Invalid format, not starting with '['")
+                return emptyList()
+            }
+
+            val parsedList: List<TV> = gson.fromJson(string, typeTvList) ?: emptyList()
+            Log.i(TAG, "Parsed ${parsedList.size} channels")
+            return parsedList
+        } catch (e: Exception) {
+            Log.e(TAG, "Parse error: ${e.message}")
+            return emptyList()
+        }
+    }
+
+    /**
+     * 在主线程使用已解析的列表初始化（涉及 LiveData，必须在主线程调用）
+     */
+    fun initFromList(context: Context, parsedList: List<TV>) {
+        _position.value = 0
+        list = parsedList
+        listModel = listOf()
+
+        // 初始化 groupModel（不调用 clear()，因为它需要已有数据）
+        // 先添加默认分组
+        if (groupModel.size() == 0) {
+            groupModel.addTVListModel(TVListModel(context.getString(R.string.my_favorites), 0))
+            groupModel.addTVListModel(TVListModel(context.getString(R.string.all_channels), 1))
+        }
+
+        // 按分组解析频道
+        val map: MutableMap<String, MutableList<TVModel>> = mutableMapOf()
+        for (v in list) {
+            if (v.group !in map) {
+                map[v.group] = mutableListOf()
+            }
+            map[v.group]?.add(TVModel(v))
+        }
+
+        val listModelNew: MutableList<TVModel> = mutableListOf()
+        var groupIndex = 2
+        var id = 0
+        for ((k, v) in map) {
+            val tvListModel = TVListModel(k, groupIndex)
+            for ((listIndex, v1) in v.withIndex()) {
+                v1.tv.id = id
+                v1.groupIndex = groupIndex
+                v1.listIndex = listIndex
+                tvListModel.addTVModel(v1)
+                listModelNew.add(v1)
+                id++
+            }
+            groupModel.addTVListModel(tvListModel)
+            groupIndex++
+        }
+        listModel = listModelNew
+        groupModel.getTVListModel(1)?.setTVListModel(listModel)
+        groupModel.setChange()
+        Log.i(TAG, "initFromList: ${listModel.size} channels loaded")
+    }
+
+    /**
+     * 在后台线程读取频道数据文件（不涉及 LiveData，安全在 IO 线程调用）
+     */
+    fun readChannelData(context: Context): String {
+        appDirectory = context.filesDir
+        val file = File(appDirectory, CACHE_FILE_NAME)
+        return if (file.exists()) {
+            Log.i(TAG, "read $file")
+            file.readText()
+        } else {
+            Log.i(TAG, "read resource")
+            context.resources.openRawResource(DEFAULT_CHANNELS_FILE).bufferedReader(Charsets.UTF_8)
+                .use { it.readText() }
+        }
+    }
+
+    /**
+     * 在主线程使用已读取的数据初始化频道列表（涉及 LiveData，必须在主线程调用）
+     */
+    fun initWithData(context: Context, str: String) {
+        _position.value = 0
+
+        groupModel.addTVListModel(TVListModel(context.getString(R.string.my_favorites), 0))
+        groupModel.addTVListModel(TVListModel(context.getString(R.string.all_channels), 1))
+
+        try {
+            str2List(str)
+        } catch (e: Exception) {
+            Log.e("", "error $e")
+            Toast.makeText(context, "读取频道失败，请在菜单中进行设置", Toast.LENGTH_LONG).show()
+        }
+
+        if (SP.configAutoLoad && !SP.configUrl.isNullOrEmpty()) {
+            SP.configUrl?.let { update(it) }
+        }
+        Log.i(TAG, "initWithData: groupModel size: ${groupModel.size()}")
     }
 
 }

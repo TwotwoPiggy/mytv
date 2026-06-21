@@ -57,6 +57,9 @@ android {
                 "META-INF/io.netty.versions.properties"
             )
         }
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     applicationVariants.all {

@@ -240,8 +240,8 @@ object SP {
         set(value) = sp.edit() { putBoolean(KEY_SHOW_SOURCE_BUTTON, value) }
 
     var enableWebviewType: Boolean
-        get() = sp.getBoolean(KEY_ENABLE_WEBVIEW_TYPE, DEFAULT_ENABLE_WEBVIEW_TYPE)
-        set(value) = sp.edit() { putBoolean(KEY_ENABLE_WEBVIEW_TYPE, value) }
+        get() = true
+        set(_) {}
 
     val fullScreenModeLiveData by lazy { MutableLiveData<Boolean>() }
 

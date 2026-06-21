@@ -4,15 +4,14 @@ import android.content.ContentProvider
 import android.content.ContentValues
 import android.net.Uri
 import android.util.Log
-import com.horsenma.mytv1.models.TVList
 
 internal class InitializerProvider : ContentProvider() {
 
-    // Happens before Application#onCreate.It's fine to init something here
+    // Happens before Application#onCreate. Only init SP here.
+    // WebView 模式使用 ChannelLoader 在 Activity 中异步加载频道，不再需要提前初始化 TVList。
     override fun onCreate(): Boolean {
-        Log.i("InitializerProvider", "Initializing SP and TVList")
+        Log.i("InitializerProvider", "Initializing SP")
         SP.init(context!!)
-        TVList.init(context!!)
         Log.i("InitializerProvider", "Initialization complete")
         return true
     }

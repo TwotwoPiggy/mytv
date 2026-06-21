@@ -124,6 +124,18 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         updateFullScreenMode(SP.fullScreenMode)
+
+        // WebView 模式强制开启时，直接跳转到 WebView Activity
+        if (SP.enableWebviewType) {
+            Log.d(TAG, "enableWebviewType is true, switching to WebView mode")
+            val intent = Intent(this, com.horsenma.mytv1.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_main)
 
         UserInfoManager.initialize(applicationContext)
@@ -1460,7 +1472,9 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         server?.stop()
         handler.removeCallbacksAndMessages(null)
-        updateManager.destroy()
+        if (::updateManager.isInitialized) {
+            updateManager.destroy()
+        }
     }
 
     override fun attachBaseContext(base: Context) {
